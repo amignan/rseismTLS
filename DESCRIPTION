@@ -1,0 +1,19 @@
+Type: Package
+Package: rseismTLS
+Version: 1.0.0
+Title: Induced Seismicity Traffic Light System
+Description: Provides the tools to build a dynamic traffic light system (TLS) 
+    to mitigate the risk of induced seismicity during underground stimulation 
+    by fluid injection.
+Authors@R: person("Arnaud", "Mignan", email = "arnaudmignan0@gmail.com", role = c("aut", "cre"))
+URL: https://github.com/amignan/rseismTLS
+BugReports: https://github.com/amignan/rseismTLS/issues
+Encoding: UTF-8
+Suggests:
+    knitr,
+    rmarkdown
+LazyData: yes
+License: MIT + file LICENSE
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 6.1.1
+VignetteBuilder: knitr
