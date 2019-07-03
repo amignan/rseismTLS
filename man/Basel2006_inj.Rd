@@ -4,9 +4,10 @@
 \name{Basel2006_inj}
 \alias{Basel2006_inj}
 \title{2006 Basel EGS injection profile.}
-\format{A data frame with 14755 rows and 2 variables:
+\format{A data frame with 8229 rows and 2 variables:
 \describe{
 \item{t}{time (in decimal days) since injection start at 2006-12-02 18:00:00.00}
+\item{dV}{flow rate (in cubic metres/day) at time t}
 \item{V}{cumulative volume (in cubic metres) injected up to time t}
 }}
 \source{
@@ -20,6 +21,7 @@ A dataset containing the injected fluid volume during the 2006 stimulation
 at the Basel, Switzerland, Enhanced Geothermal System. Digitzed (with 1-minute
 resolution) from Fig. 5a of Haering M.O., Schanz U., Ladner F., Dyer B.C.
 (2008), Characterisation of the Basel 1 enhanced geothermal system. Geothermics,
-37, 469-495, doi: 10.1016/j.geothermics.2008.06.002
+37, 469-495, doi: 10.1016/j.geothermics.2008.06.002 - Post-injection bleed-off
+not included.
 }
 \keyword{datasets}
