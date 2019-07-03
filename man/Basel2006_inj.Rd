@@ -7,7 +7,7 @@
 \format{A data frame with 8229 rows and 2 variables:
 \describe{
 \item{t}{time (in decimal days) since injection start at 2006-12-02 18:00:00.00}
-\item{Q}{flow rate (in cubic metres/day) at time t}
+\item{dV}{volume (in cubic metres) injected in the minute preceding t}
 \item{V}{cumulative volume (in cubic metres) injected up to time t}
 }}
 \source{
