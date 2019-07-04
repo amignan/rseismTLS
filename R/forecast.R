@@ -1,3 +1,36 @@
+#' Data Binning
+#'
+#' Bucketize the two main raw data sets (injection `inj` and seismicity `seism`) in `dt` bins
+#' and compute the seismicity rate `seism.rate` and injected volume `inj.binned` at times t
+#'
+#' Time `t` represents the past `dt` increment and is defined in the interval for which
+#' data are available.
+#'
+#' @param seism an earthquake catalogue data frame of parameters:
+#' * `t` the occurrence time (in decimal days)
+#' * `m` the magnitude
+#' @param inj matching injection profile data frame of parameters:
+#' * `t` the occurrence time (in decimal days)
+#' * `dV` the injected volume (in cubic metres)
+#' * `V` the cumulative injected volume (in cubic metres)
+#' @param dt time increment in same unit as `t`
+#' @return A list of 2 data frames binned in time:
+#' * `seism.rate` with parameters `t` and `rate` (number of events per `dt`)
+#' * `inj.binned` with parameters `t`, `dV` and `V`
+data.bin <- function(seism, inj, dt) {
+  t.bin.seism <- seq(0, max(seism$t) + dt, dt)
+  t.bin.inj <- seq(dt,  max(inj$t), dt)
+
+  seism.bin <- hist(seism$t, breaks = t.bin.seism, plot = F)
+
+  require(signal)       #interp1()
+  V.bin <- interp1(inj$t, inj$V, t.bin.inj, method = "linear")
+  dV.bin <- diff(c(0, V.bin))
+
+  return(list(seism.rate = data.frame(t = seism.bin$mids + dt / 2, rate = seism.bin$counts),
+              inj.binned = data.frame(t = t.bin.inj, V = V.bin, dV = dV.bin)))
+}
+
 #' Underground feedback activation
 #'
 #' Estimate the underground feedback activation \out{<i>a<sub>fb</sub></i>}, which is the
@@ -25,3 +58,5 @@
 a_fb.val <- function(Ntot, b, mc, Vtot) {
   log10(Ntot / Vtot) + b * mc
 }
+
+
