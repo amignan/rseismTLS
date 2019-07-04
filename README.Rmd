@@ -2,7 +2,8 @@
 title: "rseismTLS"
 author: "Arnaud Mignan"
 date: "`r Sys.Date()`"
-output: github_document
+output: html_document
+keep_md: TRUE
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -142,7 +143,7 @@ lines(rate.all.pred$t, rate.all.pred$rate, col = 'purple')
 abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 ```
 
-We used the option `method = 'full sequence'`, which means that the rate sequence is continuous. Considering the `co-injection` and `post-injection` separately can lead to a discontinuity (play with different values of `dt` to test the impact of binning). Those options should only be used when data is limited to one phase only.
+We used the option `method = 'full sequence'`, which means that the rate sequence is continuous. Considering the `co-injection` and `post-injection` separately can lead to a discontinuity (play with different values of `dt` to test the impact of binning). Those two options should only be used when data is limited to one phase only.
 
 ```{r, fig.show='hold', fig.path='figs/'}
 rate.coinj.pred <- rseismTLS::ratemodel.val('co-injection', list(a_fb = .1, b = theta.GR$b, mc = theta.GR$mc), inj = inj.binned)
