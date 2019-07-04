@@ -1,7 +1,7 @@
 rseismTLS
 ================
 Arnaud Mignan
-4 July 2019
+2019-07-04
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 <!-- badges: start -->
@@ -102,11 +102,13 @@ abline(v = c(t.start, t.shutin), lty = 'dotted', col = 'red')
 Forecast functions
 ------------------
 
-The following examples make use of all the forecast functions of rseismTLS, which are listed in `R/forecast.R`. Only the frequentist approach developed by Mignan et al. (2017) is so far available (see also Mignan et al., 2019a; 2019b). The bayesian approach developed by Broccardo et al. (2017) will be implemented at a later date.
+The following examples make use of all the forecast functions of rseismTLS, which are listed in `R/forecast.R`. The proposed statistical model consists of two model-specific parameters (underground activation feddback `a_fb` and mean relaxation time `tau`) and two Gutenberg-Richter law parameters (completeness magnitude `mc` and slope `b` of the frequency-magnitude distribution). The model predicts the rate of seismicity above `mc` as a linear function of the injected flow rate `dV` during the co-injection phase (Dinske and Shapiro, 2013; Mignan, 2016; van der Elst et al., 2017; Mignan et al., 2017; Broccardo et al., 2017) and as an exponential decay in the post-injection phase (Mignan et al., 2017; Broccardo et al., 2017).
+
+Only the frequentist approach developed by Mignan et al. (2017) is so far available. The bayesian approach developed by Broccardo et al. (2017) will be implemented at a later date. Physics-based models are so far not included.
 
 ### Frequentist approach
 
-Note that we also use functions from the rseismNet package for data preprocessing, i.e. to compute the completeness magnitude `mc` and the slope of the Gutenberg-Richter law `b` (see [rseismNet README](https://github.com/amignan/rseismNet) for details and how to install the package).
+Note that we first need to use functions from the rseismNet package for data preprocessing, i.e. to compute the completeness magnitude `mc` and the slope of the Gutenberg-Richter law `b` (see [rseismNet README](https://github.com/amignan/rseismNet) for details and how to install the package).
 
 ``` r
 ## mandatory preprocessing ##
@@ -119,7 +121,7 @@ b <- rseismNet::beta.mle(seism$m, mc, mbin) / log(10)    # Aki (1965) MLE method
 theta.GR <- list(mc = mc, b = b)                         # Gutenberg-Richter parameter list
 
 # step 2: bin injection & earthquake data in dt time bins
-dt <- 1/6    # [days] find trade-off between temporal resolution & sample size
+dt <- 1/12    # [days] find trade-off between temporal resolution & sample size
 data.binned <- rseismTLS::data.bin(seism, inj, dt)
 #> Loading required package: signal
 #> 
@@ -131,16 +133,44 @@ rate.obs <- data.binned$seism.rate
 inj.binned <- data.binned$inj.binned
 ```
 
-We will now fit the following statistical model (Mignan et al., 2017) to our seismicity data:
+We will now fit the following statistical model (Mignan et al., 2017):
 
-$$\\sum\_{i=1}^n X\_i$$
+$$\\lambda (t, m \\ge m\_c; \\theta) = \\begin{cases} 10^{a\_{fb}-b m\_c} \\dot V (t) & ; t \\le t\_{shut-in} \\\\ 
+  10^{a\_{fb}-b m\_c} \\dot V (t\_{shut-in}) \\exp (- \\frac{t-t\_{shut-in}}{\\tau})  & ; t &gt; t\_{shut-in} \\end{cases}$$
+
+where *λ* is the predicted seismicity rate, $\\dot V$ the flow rate, *a*<sub>*f**b*</sub> the underground activation feedback (equivalent to the seismogenic index; e.g. Dinske and Shapiro, 2013) and *τ* the mean relaxation time (Mignan et al., 2017). If the model parameters are known in advance, one can directly run `ratemodel.val()`.
 
 ``` r
-NULL
-#> NULL
+indpost <- rate.obs$t >= t.shutin
+rate.all.pred <- rseismTLS::ratemodel.val('full sequence', list(a_fb = .1, tau = 1, b = theta.GR$b, mc = theta.GR$mc), inj = inj.binned, t.postinj = rate.obs$t[indpost])
+
+par(mfrow = c(1, 1))
+plot(rate.obs$t, rate.obs$rate, type = 'S', main = 'full sequence', col = 'grey')
+lines(rate.all.pred$t, rate.all.pred$rate, col = 'purple')
+abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 ```
 
-### Frequentist approach
+<img src="figs/unnamed-chunk-5-1.png" width="100%" />
+
+We used the option `method = 'full sequence'`, which means that the rate sequence is continuous. Considering the `co-injection` and `post-injection` separately can lead to a discontinuity (play with different values of `dt` to test the impact of binning). Those options should only be used when data is limited to one phase only.
+
+``` r
+rate.coinj.pred <- rseismTLS::ratemodel.val('co-injection', list(a_fb = .1, b = theta.GR$b, mc = theta.GR$mc), inj = inj.binned)
+rate.postinj.pred <- rseismTLS::ratemodel.val('post-injection', list(tau = 1, b = theta.GR$b, mc = theta.GR$mc),
+                               shutin = list(rate = rate.obs$rate[indpost][1], t = rate.obs$t[indpost][1]),
+                               t.postinj = rate.obs$t[indpost])
+
+plot(rate.obs$t, rate.obs$rate, type = 'S', main = 'co-injection + post-injection', col = 'grey')
+lines(rate.coinj.pred$t, rate.coinj.pred$rate, col = 'red')
+lines(rate.postinj.pred$t, rate.postinj.pred$rate, col = 'blue')
+abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
+```
+
+<img src="figs/unnamed-chunk-6-1.png" width="100%" />
+
+More details about the model parameterization are given in the function documentation (`??rseismTLS::ratemodel.val`).
+
+### Bayesian approach
 
 TO BE COMPLETED.
 
@@ -154,7 +184,9 @@ References
 
 Broccardo
 
-Haering (2008)
+Dinske
+
+Häring (2008)
 
 Kraft T., Deichmann N. (2014), High-precision relocation and focal mechanism of the injection-induced seismicity at the Basel EGS. Geothermics, 52, 59–73, doi: 10.1016/j.geothermics.2014.05.014
 
@@ -165,3 +197,5 @@ Mignan A., Broccardo M., Wiemer S., Giardini D. (2019), Autonomous Decision-Maki
 Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form traffic light system for actuarial decision-making during deep fluid injections. Scientific Reportsvolume, 7, 13607, doi: 10.1038/s41598-017-13585-9
 
 Mignan A., Landtwing D., Kaestli P., Mena B., Wiemer S. (2015), Induced seismicity risk analysis of the 2006 Basel, Switzerland, Enhanced Geothermal System project: Influence of uncertainties on risk mitigation. Geothermics, 53, 133-146, doi: 10.1016/j.geothermics.2014.05.007
+
+van der Elst
