@@ -59,4 +59,47 @@ a_fb.val <- function(Ntot, b, mc, Vtot) {
   log10(Ntot / Vtot) + b * mc
 }
 
+#' Statistical model of induced seismicity
+#'
+#' Description - COMING SOON
+#'
+#' Details - COMING SOON
+#'
+#' @param method COMING SOON
+#' @param theta COMING SOON
+#' @param inj COMING SOON
+#' @param shutin COMING SOON
+#' @param t.postinj COMING SOON
+#' @return COMING SOON
+ratemodel.val <- function(method, theta, inj = NULL, shutin = NULL, t.postinj = NULL) {
+  if(method != 'co-injection' & method != 'post-injection' & method != 'full sequence')
+    stop('method not found. Use co-injection, post-injection, or full sequence')
+  if (method == 'co-injection') {
+    if(is.null(inj)) stop('injection profile missing')
+    if(is.null(theta$a_fb) | is.null(theta$b) | is.null(theta$mc))
+      stop('parameters a_fb, b and/or mc missing in theta')
+    rate <- 10 ^ theta$a_fb * 10 ^ (-theta$b * theta$mc) * inj$dV
+    t <- inj$t
+  }
+  if (method == 'post-injection') {
+    if(is.null(shutin)) stop('shutin data missing')
+    if(is.null(t.postinj)) stop('t.postinj time vector missing')
+    if(is.null(theta$tau)) stop('parameter tau missing in theta')
+    rate <- shutin$rate * exp(-(t.postinj - shutin$t) / theta$tau)
+    t <- t.postinj
+  }
+  if (method == 'full sequence') {
+    if(is.null(inj)) stop('injection profile required')
+    if(is.null(theta$a_fb) | is.null(theta$b) | is.null(theta$mc) | is.null(theta$tau))
+      stop('parameters a_fb, tau, b and mc required in theta')
+    if(!is.null(shutin)) print('warning: shutin data overwritten by model')
+    if(is.null(t.postinj)) stop('t.postinj time vector missing')
+    rate.stimul <-  10 ^ theta$a_fb * 10 ^ (-theta$b * theta$mc) * inj$dV
+    rate.relax <- rate.stimul[length(rate.stimul)] * exp(-(t.postinj - t.postinj[1]) / theta$tau)
+    rate <- c(rate.stimul, rate.relax)
+    t <- c(inj$t, t.postinj)
+  }
+  return(data.frame(t = t, rate = rate))
+}
+
 
