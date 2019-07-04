@@ -22,6 +22,6 @@ the file mmc1.txt, Appendix A. Supplementary data of Kraft T., Deichmann N. (201
 High-precision relocation and focal mechanism of the injection-induced seismicity at
 the Basel EGS. Geothermics, 52, 59-73, doi: 10.1016/j.geothermics.2014.05.014.
 Time reformatted to decimal days since injection start time with only first 12 days
-kept.
+kept - event coordinates and associated uncertainties not included.
 }
 \keyword{datasets}

@@ -7,9 +7,9 @@
 #' 37, 469-495, doi: 10.1016/j.geothermics.2008.06.002 - Post-injection bleed-off
 #' not included.
 #'
-#' @format A data frame with 8229 rows and 2 variables:
+#' @format A data frame with 9310 rows and 3 variables:
 #' \describe{
-#'   \item{t}{time (in decimal days) since injection start at 2006-12-02 18:00:00.00}
+#'   \item{t}{time (in decimal days) since 2006-12-02 00:00:00.00}
 #'   \item{dV}{volume (in cubic metres) injected in the minute preceding t}
 #'   \item{V}{cumulative volume (in cubic metres) injected up to time t}
 #' }
@@ -24,7 +24,7 @@
 #' High-precision relocation and focal mechanism of the injection-induced seismicity at
 #' the Basel EGS. Geothermics, 52, 59-73, doi: 10.1016/j.geothermics.2014.05.014.
 #' Time reformatted to decimal days since injection start time with only first 12 days
-#' kept.
+#' kept - event coordinates and associated uncertainties not included.
 #'
 #' @format A data frame with 1855 rows and 2 variables:
 #' \describe{
