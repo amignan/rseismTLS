@@ -3,6 +3,13 @@ rseismTLS
 Arnaud Mignan
 2019-07-05
 
+-   [Disclaimer](#disclaimer)
+-   [Installation](#installation)
+-   [Input example](#input-example)
+-   [Forecast functions](#forecast-functions)
+-   [Risk functions](#risk-functions)
+-   [References](#references)
+
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 <!-- badges: start -->
 <!-- badges: end -->
@@ -194,8 +201,8 @@ The MLE method is applied using `ratemodel.mle()`.
 Note that the underground feedback activation can directly be estimated via the Shapiro Seismogenic Index method (e.g., Dinske and Shapiro, 2013), subject to slight differences:
 
 ``` r
-Vtot <- sum(inj$dV, na.rm = T)        # cubic meters
-( a_fb <- rseismTLS::a_fb.val(nrow(seism), theta.GR$b, theta.GR$mc, Vtot) )
+Vtot <- sum(inj$dV)        # cubic meters
+( a_fb <- rseismTLS::a_fb.val(nrow(seism), theta.GR, Vtot) )
 #> [1] 0.1881888
 ```
 

@@ -2,7 +2,10 @@
 title: "rseismTLS"
 author: "Arnaud Mignan"
 date: "`r Sys.Date()`"
-output: github_document
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -174,7 +177,7 @@ The MLE method is applied using `ratemodel.mle()`.
 Note that the underground feedback activation can directly be estimated via the Shapiro Seismogenic Index method (e.g., Dinske and Shapiro, 2013), subject to slight differences:
 
 ```{r}
-Vtot <- sum(inj$dV, na.rm = T)        # cubic meters
+Vtot <- sum(inj$dV)        # cubic meters
 ( a_fb <- rseismTLS::a_fb.val(nrow(seism), theta.GR, Vtot) )
 ```
 
@@ -190,9 +193,9 @@ TO BE COMPLETED.
 
 ## References
 
-Broccardo 
+Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367, doi: 10.1002/2017GL075251 
 
-Dinske
+Dinske C., Shapiro S.A. (2013), Seismotectonic state of reservoirs inferred from magnitude distributions of fluid-induced seismicity. J. Seismol., 17, 13-25, doi: 10.1007/s10950-012-9292-9
 
 Häring (2008)
 

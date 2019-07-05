@@ -4,14 +4,16 @@
 \alias{a_fb.val}
 \title{Underground feedback activation}
 \usage{
-a_fb.val(Ntot, b, mc, Vtot)
+a_fb.val(Ntot, theta.GR, Vtot)
 }
 \arguments{
 \item{Ntot}{total number of events above \code{mc} for \code{Vtot}}
 
-\item{b}{slope of the Gutenberg-Richter law}
-
-\item{mc}{completeness magnitude}
+\item{theta.GR}{The list of Gutenberg-Richter law parameters
+\itemize{
+\item \code{mc} the completeness magnitude
+\item \code{b} the slope of the Gutenberg-Richter law
+}}
 
 \item{Vtot}{total volume of fluids injected}
 }
