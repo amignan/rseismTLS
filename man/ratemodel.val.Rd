@@ -8,22 +8,64 @@ ratemodel.val(method, theta, inj = NULL, shutin = NULL,
   t.postinj = NULL)
 }
 \arguments{
-\item{method}{COMING SOON}
+\item{method}{the method to be used: "\code{co-injection}", "\code{post-injection}", or "\code{full sequence}"}
 
-\item{theta}{COMING SOON}
+\item{theta}{the list of model parameters
+\itemize{
+\item \code{a_fb} the underground feedback activation (\code{NULL} for "\code{post-injection}")
+\item \code{tau} the mean relaxation time (\code{NULL} for "\code{co-injection}")
+\item \code{mc} the completeness magnitude
+\item \code{b} the slope of the Gutenberg-Richter law
+}}
 
-\item{inj}{COMING SOON}
+\item{inj}{the binned injection profile data frame with parameters
+\itemize{
+\item \code{t} the occurrence time (in decimal days)
+\item \code{dV} the injected volume (in cubic metres) at \code{t}
+}}
 
-\item{shutin}{COMING SOON}
+\item{shutin}{the list of shut-in parameters (required by "\code{post-injection}")
+\itemize{
+\item \code{t} the shut-in time (in decimal days)
+\item \code{rate} the rate of induced seismicity at shut-in
+}}
 
-\item{t.postinj}{COMING SOON}
+\item{t.postinj}{the time vector for which a seismicity rate is predicted}
 }
 \value{
-COMING SOON
+A data frame of the modelled seismicity rate with parameters:
+\itemize{
+\item \code{t} the time (in decimal days)
+\item \code{rate} the seismicity rate, or number of events at time \code{t}
+}
 }
 \description{
-Description - COMING SOON
+Statistical model proposed by Mignan et al. (2017) that predicts the
+co-injection induced seismity rate via the linear relationship with flow rate
+and the post-injection rate via exponential decay.
 }
 \details{
-Details - COMING SOON
+The linear relationship is in agreement with the literature (Dinske and Shapiro,
+2013; Mignan, 2016; van der Elst et al., 2016). The exponential model was
+verified to perform best when tested on 6 stimulations (Mignan et al., 2017).
+
+The flow rate is here defined as \code{dV}, the volume injected in the period (t-dt, dt) with \code{dt}
+defined in the \code{data.bin()} function. The seismicity rate is modelled for the same time vector
+as \code{inj} for co-injection and uses \code{t.postinj} for post-injection.
+}
+\references{
+Dinske C., Shapiro S.A. (2013), Seismotectonic state of reservoirs inferred
+from magnitude distributions of fluid-induced seismicity. J. Seismol., 17, 13-25
+\href{https://link.springer.com/article/10.1007/s10950-012-9292-9}{doi: 10.1007/s10950-012-9292-9}
+
+Mignan A. (2016), Static behaviour of induced seismicity. Nonlin. Processes Geophys.,
+23, 107-113, \href{https://www.nonlin-processes-geophys.net/23/107/2016/}{doi: 10.5194/npg-23-107-2016}
+
+Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+\href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+
+van der Elst N.J., Page M.T., Weiser D.A., Goebel T.H.W., Hosseini S.M. (2016),
+Induced earthquake magnitudes are as large as (statistically) expected. J. Geophys. Res., 121 (6),
+4575-4590, \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2016JB012818}{doi: 10.1002/2016JB012818}
 }
