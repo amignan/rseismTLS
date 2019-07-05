@@ -197,7 +197,7 @@ Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarc
 
 Dinske C., Shapiro S.A. (2013), Seismotectonic state of reservoirs inferred from magnitude distributions of fluid-induced seismicity. J. Seismol., 17, 13-25, doi: 10.1007/s10950-012-9292-9
 
-Häring (2008)
+Häring M.O., Schanz U., Ladner F., Dyer B.C. (2008), Characterisation of the Basel 1 enhanced geothermal system, Geothermics, 37 (5), 469-495, doi: 10.1016/j.geothermics.2008.06.002
 
 Kraft T., Deichmann N. (2014), High-precision relocation and focal mechanism of the injection-induced seismicity at the Basel EGS.
 Geothermics, 52, 59–73, doi: 10.1016/j.geothermics.2014.05.014
@@ -210,5 +210,5 @@ Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity close
 
 Mignan A., Landtwing D., Kaestli P., Mena B., Wiemer S. (2015), Induced seismicity risk analysis of the 2006 Basel, Switzerland, Enhanced Geothermal System project: Influence of uncertainties on risk mitigation. Geothermics, 53, 133-146, doi: 10.1016/j.geothermics.2014.05.007
 
-van der Elst
+van der Elst N.J., Page M.T., Weiser D.A., Goebel T.H.W., Hosseini S.M. (2016), Induced earthquake magnitudes are as large as (statistically) expected. J. Geophys. Res., 121 (6), 4575-4590, doi: 10.1002/2016JB012818
 
