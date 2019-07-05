@@ -98,7 +98,7 @@ abline(v = c(t.start, t.shutin), lty = 'dotted', col = 'red')
 
 ## Forecast functions
 
-The following examples make use of all the forecast functions of rseismTLS, which are listed in `R/forecast.R`. The proposed statistical model consists of two model-specific parameters (underground activation feddback `a_fb` and mean relaxation time `tau`) and two Gutenberg-Richter law parameters (completeness magnitude `mc` and slope `b` of the frequency-magnitude distribution). The model predicts the rate of seismicity above `mc` as a linear function of the injected flow rate `dV` during the co-injection phase (Dinske and Shapiro, 2013; Mignan, 2016; van der Elst et al., 2017; Mignan et al., 2017; Broccardo et al., 2017) and as an exponential decay in the post-injection phase (Mignan et al., 2017; Broccardo et al., 2017).
+The following examples make use of all the forecast functions of rseismTLS, which are listed in `R/forecast.R`. The proposed statistical model consists of two model-specific parameters (underground activation feddback `a_fb` and mean relaxation time `tau`) and two Gutenberg-Richter law parameters (completeness magnitude `mc` and slope `b` of the frequency-magnitude distribution). The model predicts the rate of seismicity above `mc` as a linear function of the injected flow rate `dV` during the co-injection phase (Dinske and Shapiro, 2013; Mignan, 2016; van der Elst et al., 2016; Mignan et al., 2017; Broccardo et al., 2017) and as an exponential decay in the post-injection phase (Mignan et al., 2017; Broccardo et al., 2017).
 
 Only the frequentist approach developed by Mignan et al. (2017) is so far available. The bayesian approach developed by Broccardo et al. (2017) will be implemented at a later date. Physics-based models are so far not included. 
 
@@ -132,7 +132,6 @@ $$\lambda (t, m \ge m_c; \theta) = \begin{cases} 10^{a_{fb}-b m_c} \dot V (t) & 
 
 where $\lambda$ is the predicted seismicity rate, $\dot V$ the flow rate, $a_{fb}$ the underground activation feedback (equivalent to the seismogenic index; e.g. Dinske and Shapiro, 2013) and $\tau$ the mean relaxation time (Mignan et al., 2017). If the model parameters are known in advance, one can directly run `ratemodel.val()`.
 
-
 ```{r, fig.show='hold', fig.path='figs/'}
 indpost <- rate.obs$t >= t.shutin
 rate.all.pred <- rseismTLS::ratemodel.val('full sequence', list(a_fb = .1, tau = 1, b = theta.GR$b, mc = theta.GR$mc), inj = inj.binned, t.postinj = rate.obs$t[indpost])
@@ -143,7 +142,7 @@ lines(rate.all.pred$t, rate.all.pred$rate, col = 'purple')
 abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 ```
 
-We used the option `method = 'full sequence'`, which means that the rate sequence is continuous. Considering the `co-injection` and `post-injection` separately can lead to a discontinuity (play with different values of `dt` to test the impact of binning). Those two options should only be used when data is limited to one phase only.
+We used the option `method = 'full sequence'`, which means that the rate sequence is continuous. Considering the `co-injection` and `post-injection` separately can lead to a discontinuity (play with different values of `dt` to test the impact of binning). Those two options should only be used when data is limited to one of the two phases.
 
 ```{r, fig.show='hold', fig.path='figs/'}
 rate.coinj.pred <- rseismTLS::ratemodel.val('co-injection', list(a_fb = .1, b = theta.GR$b, mc = theta.GR$mc), inj = inj.binned)
@@ -157,7 +156,20 @@ lines(rate.postinj.pred$t, rate.postinj.pred$rate, col = 'blue')
 abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 ```
 
-More details about the model parameterization are given in the function documentation (`??rseismTLS::ratemodel.val`).
+More details about the model parameterization are given in the function's documentation (`??rseismTLS::ratemodel.val`). The model parameters $a_{fb}$ and $\tau$ are estimated using the Maximum Likelihood Estimation (MLE) method for a Non-Homogeneous Poisson Process (NHPP). The Poisson log-likelihood is computed in `poi.loglik()` and the induced seismicity model log-likelihood by `ratemodel.loglik()`. See for example:
+
+```{r}
+# the MLE estimates
+rseismTLS::ratemodel.loglik(rate.obs, list(a_fb = 0.1, tau = 1), theta.GR, t.shutin, inj = inj.binned)
+# wrong estimates
+rseismTLS::ratemodel.loglik(rate.obs, list(a_fb = -2, tau = 5), theta.GR, t.shutin, inj = inj.binned)
+```
+
+The MLE method is applied using `ratemodel.mle()`.
+
+```{r}
+( theta.mle <- rseismTLS::ratemodel.mle(rate.obs, theta.GR, t.shutin, inj = inj.binned) )
+```
 
 ### Bayesian approach
 

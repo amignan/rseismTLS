@@ -135,8 +135,10 @@ inj.binned <- data.binned$inj.binned
 
 We will now fit the following statistical model (Mignan et al., 2017):
 
-$$\\lambda (t, m \\ge m\_c; \\theta) = \\begin{cases} 10^{a\_{fb}-b m\_c} \\dot V (t) & ; t \\le t\_{shut-in} \\\\ 
-  10^{a\_{fb}-b m\_c} \\dot V (t\_{shut-in}) \\exp (- \\frac{t-t\_{shut-in}}{\\tau})  & ; t &gt; t\_{shut-in} \\end{cases}$$
+{::nomarkdown} <!--
+$$\lambda (t, m \ge m_c; \theta) = \begin{cases} 10^{a_{fb}-b m_c} \dot V (t) & ; t \le t_{shut-in} \\ 
+  10^{a_{fb}-b m_c} \dot V (t_{shut-in}) \exp (- \frac{t-t_{shut-in}}{\tau})  & ; t > t_{shut-in} \end{cases}$$
+--> {:/}
 
 where *λ* is the predicted seismicity rate, $\\dot V$ the flow rate, *a*<sub>*f**b*</sub> the underground activation feedback (equivalent to the seismogenic index; e.g. Dinske and Shapiro, 2013) and *τ* the mean relaxation time (Mignan et al., 2017). If the model parameters are known in advance, one can directly run `ratemodel.val()`.
 
@@ -152,7 +154,7 @@ abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 
 <img src="figs/unnamed-chunk-5-1.png" width="100%" />
 
-We used the option `method = 'full sequence'`, which means that the rate sequence is continuous. Considering the `co-injection` and `post-injection` separately can lead to a discontinuity (play with different values of `dt` to test the impact of binning). Those options should only be used when data is limited to one phase only.
+We used the option `method = 'full sequence'`, which means that the rate sequence is continuous. Considering the `co-injection` and `post-injection` separately can lead to a discontinuity (play with different values of `dt` to test the impact of binning). Those two options should only be used when data is limited to one phase only.
 
 ``` r
 rate.coinj.pred <- rseismTLS::ratemodel.val('co-injection', list(a_fb = .1, b = theta.GR$b, mc = theta.GR$mc), inj = inj.binned)
