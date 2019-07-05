@@ -3,7 +3,7 @@ title: "rseismTLS"
 author: "Arnaud Mignan"
 date: "`r Sys.Date()`"
 output:
-  github_document:
+  html_document:
     toc: true
     toc_depth: 2
 ---
