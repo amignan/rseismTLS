@@ -42,8 +42,9 @@ data.bin <- function(seism, inj, dt) {
 #' but here theoretically agnostic, following the notation of Mignan et al. (2017)
 #'
 #' @param Ntot total number of events above `mc` for `Vtot`
-#' @param b slope of the Gutenberg-Richter law
-#' @param mc completeness magnitude
+#' @param theta.GR The list of Gutenberg-Richter law parameters
+#' * `mc` the completeness magnitude
+#' * `b` the slope of the Gutenberg-Richter law
 #' @param Vtot total volume of fluids injected
 #' @return The numeric value of the underground feedback activation
 #' @references Dinske C., Shapiro S.A. (2013), Seismotectonic state of reservoirs inferred
@@ -55,8 +56,8 @@ data.bin <- function(seism, inj, dt) {
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #'\href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
-a_fb.val <- function(Ntot, b, mc, Vtot) {
-  log10(Ntot / Vtot) + b * mc
+a_fb.val <- function(Ntot, theta.GR, Vtot) {
+  log10(Ntot / Vtot) + theta.GR$b * theta.GR$mc
 }
 
 #' Statistical model of induced seismicity

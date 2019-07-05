@@ -175,7 +175,7 @@ Note that the underground feedback activation can directly be estimated via the 
 
 ```{r}
 Vtot <- sum(inj$dV, na.rm = T)        # cubic meters
-( a_fb <- rseismTLS::a_fb.val(nrow(seism), theta.GR$b, theta.GR$mc, Vtot) )
+( a_fb <- rseismTLS::a_fb.val(nrow(seism), theta.GR, Vtot) )
 ```
 
 
