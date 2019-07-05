@@ -2,8 +2,7 @@
 title: "rseismTLS"
 author: "Arnaud Mignan"
 date: "`r Sys.Date()`"
-output: html_document
-keep_md: TRUE
+output: github_document
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -106,10 +105,11 @@ Only the frequentist approach developed by Mignan et al. (2017) is so far availa
 
 Note that we first need to use functions from the rseismNet package for data preprocessing, i.e. to compute the completeness 
 magnitude `mc` and the slope of the Gutenberg-Richter law `b` (see [rseismNet README](https://github.com/amignan/rseismNet) for 
-details and how to install the package).
+details).
 
 ```{r}
 ## mandatory preprocessing ##
+#devtools::install_github("amignan/rseismNet")   #in case rseismNet not yet installed
 # step 1: filter out incomplete data
 #         & get Gutenberg-Richter stats
 mbin <- .1
@@ -170,6 +170,14 @@ The MLE method is applied using `ratemodel.mle()`.
 ```{r}
 ( theta.mle <- rseismTLS::ratemodel.mle(rate.obs, theta.GR, t.shutin, inj = inj.binned) )
 ```
+
+Note that the underground feedback activation can directly be estimated via the Shapiro Seismogenic Index method (e.g., Dinske and Shapiro, 2013), subject to slight differences:
+
+```{r}
+Vtot <- sum(inj$dV, na.rm = T)        # cubic meters
+( a_fb <- rseismTLS::a_fb.val(nrow(seism), theta.GR$b, theta.GR$mc, Vtot) )
+```
+
 
 ### Bayesian approach
 
