@@ -1,55 +1,57 @@
-rseismTLS
-================
-Arnaud Mignan
-2019-07-05
-
--   [Disclaimer](#disclaimer)
--   [Installation](#installation)
--   [Input example](#input-example)
--   [Forecast functions](#forecast-functions)
--   [Risk functions](#risk-functions)
--   [References](#references)
+---
+title: "rseismTLS"
+author: "Arnaud Mignan"
+date: "2019-07-05"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    keep_md: true
+---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+
+
+
 <!-- badges: start -->
 <!-- badges: end -->
+
 The rise in the frequency of anthropogenic earthquakes due to deep fluid injections is posing serious economic, societal, and legal challenges to many geo-energy and waste-disposal projects. The rseismTLS package provides actuarial tools to analyse, forecast and mitigate induced seismicity during underground stimulation, based on a TLS (i.e. Traffic Light System) procedure. It reflects the need to quantify the dynamic nature of the industrial operations and underground feedback, and complements the standard TLS approach that is inherently heuristic and mostly based on expert elicitation (so-called clinical judgment).
 
 What rseismTLS does:
 
--   Models the seismicity induced by fluid injection in the underground, using a simple statistical model;
--   Models the seismicity trailing effect (post-injection) based on a simple relaxation function;
--   Forecasts future seismicity based on planned underground stimulation (COMING SOON);
--   Estimates the magnitude threshold above which stimulation must be stopped to respect a risk-based safety criterion (COMING SOON);
--   Computes the seismic risk for a point source based on the RISK-UE method and EMS98 scale (COMING LATER);
--   Estimates the probability of reaching the magnitude threshold based on the seismicity forecast (COMING LATER).
+- Models the seismicity induced by fluid injection in the underground, using a simple statistical model;
+- Models the seismicity trailing effect (post-injection) based on a simple relaxation function;
+- Forecasts future seismicity based on planned underground stimulation (COMING SOON);
+- Estimates the magnitude threshold above which stimulation must be stopped to respect a risk-based safety criterion (COMING SOON);
+- Computes the seismic risk for a point source based on the RISK-UE method and EMS98 scale (COMING LATER);
+- Estimates the probability of reaching the magnitude threshold based on the seismicity forecast (COMING LATER).
 
 What rseismTLS needs:
 
--   An earthquake catalogue (1 induced seismicity sequence so far included in `/data` for testing);
--   The matching fluid injection profile (1 injection profile so far included in `/data` for testing).
+- An earthquake catalogue (1 induced seismicity sequence so far included in `/data` for testing);
+- The matching fluid injection profile (1 injection profile so far included in `/data` for testing).
 
-Disclaimer
-----------
+## Disclaimer
 
 The rseismTLS package is provided "as is", without warranty of any kind. In no event shall the author or copyright holder be liable for any claim, damages or other liability (see MIT `LICENSE` file).
 
-Installation
-------------
+## Installation
 
 You can install rseismTLS from github with:
 
-``` r
+
+```r
 # install.packages("devtools")
 devtools::install_github("amignan/rseismTLS")
 ```
 
-Input example
--------------
+## Input example
 
 One dataset is so far provided (see `data/`), which is a susbet of the 2006 Basel, Switzerland, EGS experiment (Häring et al., 2008; Kraft and Deichmann, 2014). The injection profile `Basel2006_inj` was digitized from Häring et al. (2008) and the catalogue `Basel2006_seism` taken from the dataset provided by Kraft and Deichmann (2014), here limited to the initial 12 days (c. 6 days of stimulation and 6 days of post-injection decay) and to magnitude information only (spatial component not included). We will use this dataset to illustrate the various functionalities of rseismTLS. We will consistently use the following naming convention: `inj` for the injection profile and `seism` for the earthquake catalogue. User-created data sets should systematically be in the following units: decimal days for time and cubic metres for injected volumes. This will conform with the standard way the model parameters are defined (see next section).
 
-``` r
+
+```r
 ## Load 2006 Basel EGS data ##
 inj <- rseismTLS::Basel2006_inj
 seism <- rseismTLS::Basel2006_seism
@@ -74,7 +76,8 @@ head(seism, 5)
 #> 5 1.0412036 1.4
 ```
 
-``` r
+
+```r
 # illustrate how decimal days are computed
 initdate <- strptime("2006-12-02 00:00:00.00", "%Y-%m-%d %H:%M:%OS")
 #start injection = 2 December, 6:00 pm
@@ -106,18 +109,20 @@ abline(v = c(t.start, t.shutin), lty = 'dotted', col = 'red')
 
 <img src="figs/unnamed-chunk-3-1.png" width="100%" />
 
-Forecast functions
-------------------
+## Forecast functions
 
 The following examples make use of all the forecast functions of rseismTLS, which are listed in `R/forecast.R`. The proposed statistical model consists of two model-specific parameters (underground activation feddback `a_fb` and mean relaxation time `tau`) and two Gutenberg-Richter law parameters (completeness magnitude `mc` and slope `b` of the frequency-magnitude distribution). The model predicts the rate of seismicity above `mc` as a linear function of the injected flow rate `dV` during the co-injection phase (Dinske and Shapiro, 2013; Mignan, 2016; van der Elst et al., 2016; Mignan et al., 2017; Broccardo et al., 2017) and as an exponential decay in the post-injection phase (Mignan et al., 2017; Broccardo et al., 2017).
 
-Only the frequentist approach developed by Mignan et al. (2017) is so far available. The bayesian approach developed by Broccardo et al. (2017) will be implemented at a later date. Physics-based models are so far not included.
+Only the frequentist approach developed by Mignan et al. (2017) is so far available. The bayesian approach developed by Broccardo et al. (2017) will be implemented at a later date. Physics-based models are so far not included. 
 
 ### Frequentist approach
 
-Note that we first need to use functions from the rseismNet package for data preprocessing, i.e. to compute the completeness magnitude `mc` and the slope of the Gutenberg-Richter law `b` (see [rseismNet README](https://github.com/amignan/rseismNet) for details).
+Note that we first need to use functions from the rseismNet package for data preprocessing, i.e. to compute the completeness 
+magnitude `mc` and the slope of the Gutenberg-Richter law `b` (see [rseismNet README](https://github.com/amignan/rseismNet) for 
+details).
 
-``` r
+
+```r
 ## mandatory preprocessing ##
 #devtools::install_github("amignan/rseismNet")   #in case rseismNet not yet installed
 # step 1: filter out incomplete data
@@ -143,12 +148,13 @@ inj.binned <- data.binned$inj.binned
 
 We will now fit the following statistical model (Mignan et al., 2017):
 
-$$\\lambda (t, m \\ge m\_c; \\theta) = \\begin{cases} 10^{a\_{fb}-b m\_c} \\dot V (t) & ; t \\le t\_{shut-in} \\\\ 
-  10^{a\_{fb}-b m\_c} \\dot V (t\_{shut-in}) \\exp (- \\frac{t-t\_{shut-in}}{\\tau})  & ; t &gt; t\_{shut-in} \\end{cases}$$
+$$\lambda (t, m \ge m_c; \theta) = \begin{cases} 10^{a_{fb}-b m_c} \dot V (t) & ; t \le t_{shut-in} \\ 
+  10^{a_{fb}-b m_c} \dot V (t_{shut-in}) \exp (- \frac{t-t_{shut-in}}{\tau})  & ; t > t_{shut-in} \end{cases}$$
 
-where *λ* is the predicted seismicity rate, $\\dot V$ the flow rate, *a*<sub>*f**b*</sub> the underground activation feedback (equivalent to the seismogenic index; e.g. Dinske and Shapiro, 2013) and *τ* the mean relaxation time (Mignan et al., 2017). If the model parameters are known in advance, one can directly run `ratemodel.val()`.
+where $\lambda$ is the predicted seismicity rate, $\dot V$ the flow rate, $a_{fb}$ the underground activation feedback (equivalent to the seismogenic index; e.g. Dinske and Shapiro, 2013) and $\tau$ the mean relaxation time (Mignan et al., 2017). If the model parameters are known in advance, one can directly run `ratemodel.val()`.
 
-``` r
+
+```r
 indpost <- rate.obs$t >= t.shutin
 rate.all.pred <- rseismTLS::ratemodel.val('full sequence', list(a_fb = .1, tau = 1, b = theta.GR$b, mc = theta.GR$mc), inj = inj.binned, t.postinj = rate.obs$t[indpost])
 
@@ -162,7 +168,8 @@ abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 
 We used the option `method = 'full sequence'`, which means that the rate sequence is continuous. Considering the `co-injection` and `post-injection` separately can lead to a discontinuity (play with different values of `dt` to test the impact of binning). Those two options should only be used when data is limited to one of the two phases.
 
-``` r
+
+```r
 rate.coinj.pred <- rseismTLS::ratemodel.val('co-injection', list(a_fb = .1, b = theta.GR$b, mc = theta.GR$mc), inj = inj.binned)
 rate.postinj.pred <- rseismTLS::ratemodel.val('post-injection', list(tau = 1, b = theta.GR$b, mc = theta.GR$mc),
                                shutin = list(rate = rate.obs$rate[indpost][1], t = rate.obs$t[indpost][1]),
@@ -176,9 +183,10 @@ abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 
 <img src="figs/unnamed-chunk-6-1.png" width="100%" />
 
-More details about the model parameterization are given in the function's documentation (`??rseismTLS::ratemodel.val`). The model parameters *a*<sub>*f**b*</sub> and *τ* are estimated using the Maximum Likelihood Estimation (MLE) method for a Non-Homogeneous Poisson Process (NHPP). The Poisson log-likelihood is computed in `poi.loglik()` and the induced seismicity model log-likelihood by `ratemodel.loglik()`. See for example:
+More details about the model parameterization are given in the function's documentation (`??rseismTLS::ratemodel.val`). The model parameters $a_{fb}$ and $\tau$ are estimated using the Maximum Likelihood Estimation (MLE) method for a Non-Homogeneous Poisson Process (NHPP). The Poisson log-likelihood is computed in `poi.loglik()` and the induced seismicity model log-likelihood by `ratemodel.loglik()`. See for example:
 
-``` r
+
+```r
 # the MLE estimates
 rseismTLS::ratemodel.loglik(rate.obs, list(a_fb = 0.1, tau = 1), theta.GR, t.shutin, inj = inj.binned)
 #> [1] -269.5094
@@ -189,7 +197,8 @@ rseismTLS::ratemodel.loglik(rate.obs, list(a_fb = -2, tau = 5), theta.GR, t.shut
 
 The MLE method is applied using `ratemodel.mle()`.
 
-``` r
+
+```r
 ( theta.mle <- rseismTLS::ratemodel.mle(rate.obs, theta.GR, t.shutin, inj = inj.binned) )
 #> $a_fb
 #> [1] 0.1
@@ -200,38 +209,41 @@ The MLE method is applied using `ratemodel.mle()`.
 
 Note that the underground feedback activation can directly be estimated via the Shapiro Seismogenic Index method (e.g., Dinske and Shapiro, 2013), subject to slight differences:
 
-``` r
+
+```r
 Vtot <- sum(inj$dV)        # cubic meters
 ( a_fb <- rseismTLS::a_fb.val(nrow(seism), theta.GR, Vtot) )
 #> [1] 0.1881888
 ```
 
+
 ### Bayesian approach
 
 TO BE COMPLETED.
 
-Risk functions
---------------
+
+## Risk functions
 
 TO BE COMPLETED.
 
-References
-----------
+## References
 
-Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367, doi: 10.1002/2017GL075251
+Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367, doi: 10.1002/2017GL075251 
 
 Dinske C., Shapiro S.A. (2013), Seismotectonic state of reservoirs inferred from magnitude distributions of fluid-induced seismicity. J. Seismol., 17, 13-25, doi: 10.1007/s10950-012-9292-9
 
 Häring M.O., Schanz U., Ladner F., Dyer B.C. (2008), Characterisation of the Basel 1 enhanced geothermal system, Geothermics, 37 (5), 469-495, doi: 10.1016/j.geothermics.2008.06.002
 
-Kraft T., Deichmann N. (2014), High-precision relocation and focal mechanism of the injection-induced seismicity at the Basel EGS. Geothermics, 52, 59–73, doi: 10.1016/j.geothermics.2014.05.014
+Kraft T., Deichmann N. (2014), High-precision relocation and focal mechanism of the injection-induced seismicity at the Basel EGS.
+Geothermics, 52, 59–73, doi: 10.1016/j.geothermics.2014.05.014
 
 Mignan A., Karnouvis D., Broccardo M., Wiemer S., Giardini D. (2019), Including seismic risk mitigation measures into the Levelized Cost Of Electricity in enhanced geothermal systems for optimal siting. Applied Energy, 238, 831-850, doi: 10.1016/j.apenergy.2019.01.109
 
-Mignan A., Broccardo M., Wiemer S., Giardini D. (2019), Autonomous Decision-Making Against Induced Seismicity in Deep Fluid Injections. In: Ferrari A., Laloui L. (eds), Energy Geotechnics, SEG 2018, Springer Series in Geomechanics and Geoengineering, , 369-376, doi: 10.1007/978-3-319-99670-7\_46
+Mignan A., Broccardo M., Wiemer S., Giardini D. (2019), Autonomous Decision-Making Against Induced Seismicity in Deep Fluid Injections. In: Ferrari A., Laloui L. (eds), Energy Geotechnics, SEG 2018, Springer Series in Geomechanics and Geoengineering, , 369-376, doi: 10.1007/978-3-319-99670-7_46
 
 Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form traffic light system for actuarial decision-making during deep fluid injections. Scientific Reportsvolume, 7, 13607, doi: 10.1038/s41598-017-13585-9
 
 Mignan A., Landtwing D., Kaestli P., Mena B., Wiemer S. (2015), Induced seismicity risk analysis of the 2006 Basel, Switzerland, Enhanced Geothermal System project: Influence of uncertainties on risk mitigation. Geothermics, 53, 133-146, doi: 10.1016/j.geothermics.2014.05.007
 
 van der Elst N.J., Page M.T., Weiser D.A., Goebel T.H.W., Hosseini S.M. (2016), Induced earthquake magnitudes are as large as (statistically) expected. J. Geophys. Res., 121 (6), 4575-4590, doi: 10.1002/2016JB012818
+

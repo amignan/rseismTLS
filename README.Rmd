@@ -6,6 +6,7 @@ output:
   html_document:
     toc: true
     toc_depth: 2
+    keep_md: true
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
