@@ -7,7 +7,7 @@
 #' @section data
 #' "Basel2006_inj", "Basel2006_seism"
 #' @section rseismTLS forecast functions:
-#' a_fb.val, data.bin, poi.loglik, ratemodel.val, ratemodel.loglik, ratemodel.mle
+#' negloglik.val, model_par.val, a_fb.val, data.bin, model_rate.val, poi.loglik, ratemodel.loglik, ratemodel.mle
 #' @section rseismNet risk functions:
 #'
 #' @docType package
