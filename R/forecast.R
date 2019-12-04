@@ -102,7 +102,7 @@ data.bin <- function(seism, inj, tint) {
                            dV = interp1(c(0, inj$t), c(0, inj$dV), seism.binned$mids) * dt,
                            V = interp1(c(0, inj$t), c(0, inj$V), seism.binned$mids))
 
-  return(list(seism.rate = data.frame(t = seism.binned$mids, rate = seism.binned$counts),
+  return(list(seism.binned = data.frame(t = seism.binned$mids, rate = seism.binned$counts),
               inj.binned = subset(inj.binned, !is.na(dV))))
 }
 
@@ -129,7 +129,7 @@ data.bin <- function(seism, inj, tint) {
 #' \href{https://authors.library.caltech.edu/47734/1/185.full.pdf}{34, 184-188}
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
-#'\href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 a_fb.val <- function(Ntot, b, mc, Vtot) {
   log10(Ntot / Vtot) + b * mc
 }
