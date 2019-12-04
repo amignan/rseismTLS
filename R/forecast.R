@@ -73,17 +73,14 @@ negloglik.val <- function(data, par){
 model_par.val <- function(data, par = c(0, 1, 1)) {
   require(signal)       # interp1()
   res <- optim(par = par, fn = rseismTLS::negloglik.val, data = data)
-  return(list(a_fb = res$par, tau = res$par[2], b = res$par[3], nLL = res$value))
+  return(list(a_fb = res$par[1], tau = res$par[2], b = res$par[3], nLL = res$value))
 }
-
 
 #' Data Binning
 #'
-#' Bucketize the two main raw data sets (injection `inj` and seismicity `seism`) in `dt` bins
-#' and compute the seismicity rate `seism.rate` and injected volume `inj.binned` at times t
+#' Bucketize the two main data sets (injection `inj` and seismicity `seism`) in time intervals `tint`.
 #'
-#' Time `t` represents the past `dt` increment and is defined in the interval for which
-#' data are available.
+#' Time `t` represents the centre of each bin of the time intervals `tint`.
 #'
 #' @param seism an earthquake catalogue data frame of parameters:
 #' * `t` the occurrence time (in decimal days)
@@ -92,22 +89,21 @@ model_par.val <- function(data, par = c(0, 1, 1)) {
 #' * `t` the occurrence time (in decimal days)
 #' * `dV` the injected volume (in cubic metres)
 #' * `V` the cumulative injected volume (in cubic metres)
-#' @param dt time increment in same unit as `t`
+#' @param tint time intervals of constant length tbin (in decimal days)
 #' @return A list of 2 data frames binned in time:
-#' * `seism.rate` with parameters `t` and `rate` (number of events per `dt`)
-#' * `inj.binned` with parameters `t`, `dV` and `V`
-data.bin <- function(seism, inj, dt) {
-  t.bin.seism <- seq(0, max(seism$t) + dt, dt)
-  t.bin.inj <- seq(dt,  max(inj$t), dt)
+#' * `seism.binned` with parameters `t` and `rate` (number of events per `tbin`)
+#' * `inj.binned` with parameters `t`, `dV` (in cubic metres per `tbin`) and `V`
+data.bin <- function(seism, inj, tint) {
+  seism.binned <- hist(seism$t, breaks = tint, plot = F)
 
-  seism.bin <- hist(seism$t, breaks = t.bin.seism, plot = F)
+  dt <- unique(diff(tint))[1]
+  require(signal)       # interp1()
+  inj.binned <- data.frame(t = seism.binned$mids,
+                           dV = interp1(c(0, inj$t), c(0, inj$dV), seism.binned$mids) * dt,
+                           V = interp1(c(0, inj$t), c(0, inj$V), seism.binned$mids))
 
-  require(signal)       #interp1()
-  V.bin <- interp1(inj$t, inj$V, t.bin.inj, method = "linear")
-  dV.bin <- diff(c(0, V.bin))
-
-  return(list(seism.rate = data.frame(t = seism.bin$mids + dt / 2, rate = seism.bin$counts),
-              inj.binned = data.frame(t = t.bin.inj, V = V.bin, dV = dV.bin)))
+  return(list(seism.rate = data.frame(t = seism.binned$mids, rate = seism.binned$counts),
+              inj.binned = subset(inj.binned, !is.na(dV))))
 }
 
 #' Underground feedback activation
@@ -118,12 +114,11 @@ data.bin <- function(seism, inj, dt) {
 #'
 #' This is equivalent to Shapiro's Seismogenic Index (e.g., Dinske and Shapiro, 2013)
 #' \out{<i>SI = log<sub>10</sub>(N<sub>tot</sub> / V<sub>tot</sub>) + b * m<sub>c</sub></i>}
-#' but here theoretically agnostic, following the notation of Mignan et al. (2017)
+#' but here theoretically agnostic, following the notation of Mignan et al. (2017).
 #'
 #' @param Ntot total number of events above `mc` for `Vtot`
-#' @param theta.GR The list of Gutenberg-Richter law parameters
-#' * `mc` the completeness magnitude
-#' * `b` the slope of the Gutenberg-Richter law
+#' @param mc the completeness magnitude
+#' @param b the slope of the Gutenberg-Richter law
 #' @param Vtot total volume of fluids injected
 #' @return The numeric value of the underground feedback activation
 #' @references Dinske C., Shapiro S.A. (2013), Seismotectonic state of reservoirs inferred
@@ -135,8 +130,8 @@ data.bin <- function(seism, inj, dt) {
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #'\href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
-a_fb.val <- function(Ntot, theta.GR, Vtot) {
-  log10(Ntot / Vtot) + theta.GR$b * theta.GR$mc
+a_fb.val <- function(Ntot, b, mc, Vtot) {
+  log10(Ntot / Vtot) + b * mc
 }
 
 #' Statistical model of induced seismicity
@@ -154,21 +149,21 @@ a_fb.val <- function(Ntot, theta.GR, Vtot) {
 #' as `inj` for co-injection and uses `t.postinj` for post-injection.
 #'
 #' @param method the method to be used: "`co-injection`", "`post-injection`", or "`full sequence`"
-#' @param theta the list of model parameters
+#' @param theta the list of model parameters:
 #' * `a_fb` the underground feedback activation (`NULL` for "`post-injection`")
 #' * `tau` the mean relaxation time (`NULL` for "`co-injection`")
-#' * `mc` the completeness magnitude
 #' * `b` the slope of the Gutenberg-Richter law
+#' * `mc` the completeness magnitude
 #' @param inj the binned injection profile data frame with parameters
 #' * `t` the occurrence time (in decimal days)
-#' * `dV` the injected volume (in cubic metres) at `t`
+#' * `dV` the flow rate (in cubic metres per bin)
 #' @param shutin the list of shut-in parameters (required by "`post-injection`")
 #' * `t` the shut-in time (in decimal days)
 #' * `rate` the rate of induced seismicity at shut-in
 #' @param t.postinj the time vector for which a seismicity rate is predicted
 #' @return A data frame of the modelled seismicity rate with parameters:
 #' * `t` the time (in decimal days)
-#' * `rate` the seismicity rate, or number of events at time `t`
+#' * `rate` the seismicity rate per bin
 #' @references Dinske C., Shapiro S.A. (2013), Seismotectonic state of reservoirs inferred
 #' from magnitude distributions of fluid-induced seismicity. J. Seismol., 17, 13-25
 #' \href{https://link.springer.com/article/10.1007/s10950-012-9292-9}{doi: 10.1007/s10950-012-9292-9}
@@ -180,7 +175,7 @@ a_fb.val <- function(Ntot, theta.GR, Vtot) {
 #' @references van der Elst N.J., Page M.T., Weiser D.A., Goebel T.H.W., Hosseini S.M. (2016),
 #' Induced earthquake magnitudes are as large as (statistically) expected. J. Geophys. Res., 121 (6),
 #' 4575-4590, \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2016JB012818}{doi: 10.1002/2016JB012818}
-ratemodel.val <- function(method, theta, inj = NULL, shutin = NULL, t.postinj = NULL) {
+model_rate.val <- function(method, theta, inj = NULL, shutin = NULL, t.postinj = NULL) {
   if(method != 'co-injection' & method != 'post-injection' & method != 'full sequence')
     stop('method not found. Use co-injection, post-injection, or full sequence')
   if (method == 'co-injection') {
