@@ -19,7 +19,7 @@
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
-#' @seealso \code{model_par.val}
+#' @seealso \code{model_par.mle}
 negloglik.val <- function(data, par){
   theta <- list(a_fb = par[1], tau = par[2], b = par[3])
 
@@ -28,6 +28,7 @@ negloglik.val <- function(data, par){
   seism.post <- subset(data$seism, data$seism$t > data$ts)
   Ninj <- nrow(seism.inj)
   Npost <- nrow(seism.post)
+  require(signal)       # interp1()
   dV <- interp1(data$inj$t, data$inj$dV, seism.inj$t)
   dV.ts <- tail(dV, 1)
   V.ts <- tail(data$inj$V, 1)
@@ -70,8 +71,7 @@ negloglik.val <- function(data, par){
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{negloglik.val}
-model_par.val <- function(data, par = c(0, 1, 1)) {
-  require(signal)       # interp1()
+model_par.mle <- function(data, par = c(0, 1, 1)) {
   res <- optim(par = par, fn = rseismTLS::negloglik.val, data = data)
   return(list(a_fb = res$par[1], tau = res$par[2], b = res$par[3], nLL = res$value))
 }
@@ -148,7 +148,7 @@ a_fb.val <- function(Ntot, b, mc, Vtot) {
 #' defined in the `data.bin()` function. The seismicity rate is modelled for the same time vector
 #' as `inj` for co-injection and uses `t.postinj` for post-injection.
 #'
-#' @param method the method to be used: "`co-injection`", "`post-injection`", or "`full sequence`"
+#' @param window the window to be used: "`injection`", "`post-injection`", or "`full sequence`"
 #' @param theta the list of model parameters:
 #' * `a_fb` the underground feedback activation (`NULL` for "`post-injection`")
 #' * `tau` the mean relaxation time (`NULL` for "`co-injection`")
@@ -175,24 +175,24 @@ a_fb.val <- function(Ntot, b, mc, Vtot) {
 #' @references van der Elst N.J., Page M.T., Weiser D.A., Goebel T.H.W., Hosseini S.M. (2016),
 #' Induced earthquake magnitudes are as large as (statistically) expected. J. Geophys. Res., 121 (6),
 #' 4575-4590, \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2016JB012818}{doi: 10.1002/2016JB012818}
-model_rate.val <- function(method, theta, inj = NULL, shutin = NULL, t.postinj = NULL) {
-  if(method != 'co-injection' & method != 'post-injection' & method != 'full sequence')
-    stop('method not found. Use co-injection, post-injection, or full sequence')
-  if (method == 'co-injection') {
+model_rate.val <- function(window, theta, inj = NULL, shutin = NULL, t.postinj = NULL) {
+  if(window != 'injection' & window != 'post-injection' & window != 'full sequence')
+    stop("window not found. Use 'injection', 'post-injection', or 'full sequence'")
+  if (window == 'injection') {
     if(is.null(inj)) stop('injection profile missing')
     if(is.null(theta$a_fb) | is.null(theta$b) | is.null(theta$mc))
       stop('parameters a_fb, b and/or mc missing in theta')
     rate <- 10 ^ theta$a_fb * 10 ^ (-theta$b * theta$mc) * inj$dV
     t <- inj$t
   }
-  if (method == 'post-injection') {
+  if (window == 'post-injection') {
     if(is.null(shutin)) stop('shutin data missing')
     if(is.null(t.postinj)) stop('t.postinj time vector missing')
     if(is.null(theta$tau)) stop('parameter tau missing in theta')
     rate <- shutin$rate * exp(-(t.postinj - shutin$t) / theta$tau)
     t <- t.postinj
   }
-  if (method == 'full sequence') {
+  if (window == 'full sequence') {
     if(is.null(inj)) stop('injection profile required')
     if(is.null(theta$a_fb) | is.null(theta$b) | is.null(theta$mc) | is.null(theta$tau))
       stop('parameters a_fb, tau, b and mc required in theta')
