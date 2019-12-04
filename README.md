@@ -1,7 +1,7 @@
 ---
 title: "rseismTLS"
 author: "Arnaud Mignan"
-date: "2019-07-05"
+date: "2019-12-04"
 output:
   html_document:
     toc: true
@@ -20,8 +20,8 @@ The rise in the frequency of anthropogenic earthquakes due to deep fluid injecti
 
 What rseismTLS does:
 
-- Models the seismicity induced by fluid injection in the underground, using a simple statistical model;
-- Models the seismicity trailing effect (post-injection) based on a simple relaxation function;
+- Models the seismicity induced by fluid injection in the underground, based on the linear relationship between flow rate and seismicity rate;
+- Models the seismicity trailing effect (post-injection) based on an exponential relaxation function;
 - Forecasts future seismicity based on planned underground stimulation (COMING SOON);
 - Estimates the magnitude threshold above which stimulation must be stopped to respect a risk-based safety criterion (COMING SOON);
 - Computes the seismic risk for a point source based on the RISK-UE method and EMS98 scale (COMING LATER);
@@ -29,8 +29,8 @@ What rseismTLS does:
 
 What rseismTLS needs:
 
-- An earthquake catalogue (1 induced seismicity sequence so far included in `/data` for testing);
-- The matching fluid injection profile (1 injection profile so far included in `/data` for testing).
+- An earthquake catalogue (one induced seismicity sequence so far included in `/data` for testing);
+- The matching fluid injection profile (one injection profile so far included in `/data` for testing).
 
 ## Disclaimer
 
@@ -48,7 +48,7 @@ devtools::install_github("amignan/rseismTLS")
 
 ## Input example
 
-One dataset is so far provided (see `data/`), which is a susbet of the 2006 Basel, Switzerland, EGS experiment (Häring et al., 2008; Kraft and Deichmann, 2014). The injection profile `Basel2006_inj` was digitized from Häring et al. (2008) and the catalogue `Basel2006_seism` taken from the dataset provided by Kraft and Deichmann (2014), here limited to the initial 12 days (c. 6 days of stimulation and 6 days of post-injection decay) and to magnitude information only (spatial component not included). We will use this dataset to illustrate the various functionalities of rseismTLS. We will consistently use the following naming convention: `inj` for the injection profile and `seism` for the earthquake catalogue. User-created data sets should systematically be in the following units: decimal days for time and cubic metres for injected volumes. This will conform with the standard way the model parameters are defined (see next section).
+One dataset is so far provided (see `data/`), which is a susbet of the 2006 Basel, Switzerland, EGS experiment (Häring et al., 2008; Kraft and Deichmann, 2014). The injection profile `Basel2006_inj` was digitized from Häring et al. (2008) and the catalogue `Basel2006_seism` taken from the dataset provided by Kraft and Deichmann (2014), here limited to the initial 12 days (c. 6 days of stimulation and 6 days of post-injection decay) and to magnitude information only (spatial component not included). We will use this dataset to illustrate the various functionalities of rseismTLS. We will consistently use the following naming convention: `inj` for the injection profile and `seism` for the earthquake catalogue. User-created data sets must be in the following units: decimal days for time and cubic metres for injected volumes. Moreover, since the model so far does not include negative flow rates (i.e., bleed-off in post-injection phase), the injection flow rate must stop at the shut-in time and any negative flow rate during the injection phase fixed to zero (this case is fortunately very rare). Following those rules will conform with the rseismTLS model computations.
 
 
 ```r
@@ -59,12 +59,12 @@ seism <- rseismTLS::Basel2006_seism
 # volume dV [m^3] in the minute preceding t,
 # and cumulative volume V [m^3] up to t
 tail(inj, 5)       
-#>             t        dV        V
-#> 9306 6.461806 1.8080300 11576.11
-#> 9307 6.462500 1.8080300 11577.92
-#> 9308 6.463194 1.8080300 11579.73
-#> 9309 6.463889 0.9777826 11580.71
-#> 9310 6.464583 0.0000000 11580.71
+#>          t       dV        V
+#> 36 5.91488 4569.869  9652.23
+#> 37 6.15537 4680.778 10777.91
+#> 38 6.17162 2626.776 10820.59
+#> 39 6.46357 2603.563 11580.71
+#> 40 6.48125 2603.563 11626.74
 #
 # same time t reference, event magnitudes m
 head(seism, 5)
@@ -80,17 +80,17 @@ head(seism, 5)
 ```r
 # illustrate how decimal days are computed
 initdate <- strptime("2006-12-02 00:00:00.00", "%Y-%m-%d %H:%M:%OS")
-#start injection = 2 December, 6:00 pm
+# start injection = 2 December, 6:00 pm
 startdate <- strptime("2006-12-02 18:00:00.00", "%Y-%m-%d %H:%M:%OS")
 t.start <- as.double(startdate)/86400-as.double(initdate)/86400
-#end injection = 8 December, 11:33 am
+# end injection = 8 December, 11:33 am
 enddate <- strptime("2006-12-08 11:33:00.00", "%Y-%m-%d %H:%M:%OS")
 t.shutin <- as.double(enddate)/86400-as.double(initdate)/86400
 
 # plot data
 par(mfrow = c(2,2))
 plot(inj$t, inj$dV, type = 'l', xlim = c(0,12),
-     main = 'Volume dV [m^3]')
+     main = 'Flow rate dV [m^3/day]')
 abline(v = c(t.start, t.shutin), lty = 'dotted', col = 'red')
 abline(h = 0, lty = 'dotted')
 
@@ -111,109 +111,128 @@ abline(v = c(t.start, t.shutin), lty = 'dotted', col = 'red')
 
 ## Forecast functions
 
-The following examples make use of all the forecast functions of rseismTLS, which are listed in `R/forecast.R`. The proposed statistical model consists of two model-specific parameters (underground activation feddback `a_fb` and mean relaxation time `tau`) and two Gutenberg-Richter law parameters (completeness magnitude `mc` and slope `b` of the frequency-magnitude distribution). The model predicts the rate of seismicity above `mc` as a linear function of the injected flow rate `dV` during the co-injection phase (Dinske and Shapiro, 2013; Mignan, 2016; van der Elst et al., 2016; Mignan et al., 2017; Broccardo et al., 2017) and as an exponential decay in the post-injection phase (Mignan et al., 2017; Broccardo et al., 2017).
+The following examples make use of all the forecast functions of rseismTLS, which are listed in `R/forecast.R`. They are based on the statistical model of Mignan et al. (2017):
 
-Only the frequentist approach developed by Mignan et al. (2017) is so far available. The bayesian approach developed by Broccardo et al. (2017) will be implemented at a later date. Physics-based models are so far not included. 
+$$\lambda (t, m \ge m_c; \theta) = \begin{cases} 10^{a_{fb}-b m_c} \dot V (t) & ; t \le t_{shut-in} \\ 
+  10^{a_{fb}-b m_c} \dot V (t_{shut-in}) \exp (- \frac{t-t_{shut-in}}{\tau})  & ; t > t_{shut-in} \end{cases}$$
+
+where $\lambda$ is the predicted seismicity rate above completeness magnitude $m_c$, $\dot V$ the flow rate, $a_{fb}$ the underground activation feedback (equivalent to the seismogenic index; e.g. Dinske and Shapiro, 2013) and $\tau$ the mean relaxation time (Mignan et al., 2017). The linear relationship between rate of seismicity $\lambda$ and flow rate $\dot V$ is well recognised (Dinske and Shapiro, 2013; Mignan, 2016; van der Elst et al., 2016; Mignan et al., 2017; Broccardo et al., 2017). Use of the exponential decay during the post-injection phase was proposed by Mignan et al. (2017).
+
+Only the frequentist approach developed by Mignan et al. (2017) is so far available. The bayesian approach developed by Broccardo et al. (2017) will be implemented at a later date. Physics-based models are so far not considered. 
 
 ### Frequentist approach
 
-Note that we first need to use functions from the rseismNet package for data preprocessing, i.e. to compute the completeness 
-magnitude `mc` and the slope of the Gutenberg-Richter law `b` (see [rseismNet README](https://github.com/amignan/rseismNet) for 
-details).
+Note that we first need to use functions from the rseismNet package for data preprocessing, here to compute the completeness magnitude $m_c$ (see [rseismNet README](https://amignan.github.io/rseismNet/README.html) for details).
 
 
 ```r
 ## mandatory preprocessing ##
 #devtools::install_github("amignan/rseismNet")   #in case rseismNet not yet installed
-# step 1: filter out incomplete data
-#         & get Gutenberg-Richter stats
 mbin <- .1
-mc <- rseismNet::mc.val(seism$m, method = 'mode', mbin)  # see other methods in rseismNet
-seism <- subset(seism, m > mc - mbin / 2)
-b <- rseismNet::beta.mle(seism$m, mc, mbin) / log(10)    # Aki (1965) MLE method
-theta.GR <- list(mc = mc, b = b)                         # Gutenberg-Richter parameter list
+mc <- rseismNet::mc.val(seism$m, method = 'mode', mbin)      # see other methods in rseismNet
+seism <- subset(seism, m > mc - mbin / 2)                    # complete earthquake catalogue
+(b.Aki <- rseismNet::beta.mle(seism$m, mc, mbin) / log(10))  # Aki (1965) MLE method
+#> [1] 1.580881
+```
 
-# step 2: bin injection & earthquake data in dt time bins
-dt <- 1/12    # [days] find trade-off between temporal resolution & sample size
-data.binned <- rseismTLS::data.bin(seism, inj, dt)
+The model parameters are estimated with `model_par.val` by minimizing the negative log-likelihood function 'negloglik.val', as given in Broccardo et al. (2017:A2):
+
+
+```r
+data <- list(seism = seism, inj = inj, m0 = mc, ts = t.shutin, Tmax = 12)
+(par.MLE <- rseismTLS::model_par.val(data))
 #> Loading required package: signal
 #> 
 #> Attaching package: 'signal'
 #> The following objects are masked from 'package:stats':
 #> 
 #>     filter, poly
-rate.obs <- data.binned$seism.rate
-inj.binned <- data.binned$inj.binned
+#> $a_fb
+#> [1] 0.09169798
+#> 
+#> $tau
+#> [1] 1.098945
+#> 
+#> $b
+#> [1] 1.581234
+#> 
+#> $nLL
+#> [1] -4161.768
 ```
 
-We will now fit the following statistical model (Mignan et al., 2017):
-
-$$\lambda (t, m \ge m_c; \theta) = \begin{cases} 10^{a_{fb}-b m_c} \dot V (t) & ; t \le t_{shut-in} \\ 
-  10^{a_{fb}-b m_c} \dot V (t_{shut-in}) \exp (- \frac{t-t_{shut-in}}{\tau})  & ; t > t_{shut-in} \end{cases}$$
-
-where $\lambda$ is the predicted seismicity rate, $\dot V$ the flow rate, $a_{fb}$ the underground activation feedback (equivalent to the seismogenic index; e.g. Dinske and Shapiro, 2013) and $\tau$ the mean relaxation time (Mignan et al., 2017). If the model parameters are known in advance, one can directly run `ratemodel.val()`.
+Note that the $b$ estimate is close to the MLE value obtained directly from the frequency-magnitude distribution (see `b.Aki`). We can also calculate $a_{fb}$ via the Shapiro Seismogenic Index (SI) method (e.g., Dinske and Shapiro, 2013)
 
 
 ```r
-indpost <- rate.obs$t >= t.shutin
-rate.all.pred <- rseismTLS::ratemodel.val('full sequence', list(a_fb = .1, tau = 1, b = theta.GR$b, mc = theta.GR$mc), inj = inj.binned, t.postinj = rate.obs$t[indpost])
+( Vtot <- tail(inj$V, 1) )        # cubic meters
+#> [1] 11626.74
+( a_fb.SI <- rseismTLS::a_fb.val(nrow(seism), b.Aki, mc, Vtot) )
+#> [1] 0.186466
+```
+
+The predicted seismicity rate $\lambda$ per time bin is calculated by `model_rate.val`, which input is binned by `data.bin`:
+
+
+```r
+# bucketize injection & seismicity data into tbin time bins
+tbin <- 1/6                # [days]
+tint <- seq(0, 12, tbin)    # [days]
+data.binned <- rseismTLS::data.bin(seism, inj, tint)
+seism.binned <- data.binned$seism.binned
+inj.binned <- data.binned$inj.binned
+
+ind.post <- which(seism.binned$t > tail(inj.binned$t, 1))
+rate.pred <- rseismTLS::model_rate.val('full sequence', 
+                                       list(a_fb = par.MLE$a_fb, tau = par.MLE$tau, b = par.MLE$b, mc = mc), 
+                                       inj = inj.binned, t.postinj = seism.binned$t[ind.post])
 
 par(mfrow = c(1, 1))
-plot(rate.obs$t, rate.obs$rate, type = 'S', main = 'full sequence', col = 'grey')
-lines(rate.all.pred$t, rate.all.pred$rate, col = 'purple')
+hist(seism$t, breaks = tint, main = 'full sequence', col = 'grey', border = 'white')
+lines(rate.pred, col = 'darkred')
 abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 ```
 
-<img src="figs/unnamed-chunk-5-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />
 
-We used the option `method = 'full sequence'`, which means that the rate sequence is continuous. Considering the `co-injection` and `post-injection` separately can lead to a discontinuity (play with different values of `dt` to test the impact of binning). Those two options should only be used when data is limited to one of the two phases.
+We used the option `method = 'full sequence'`, which means that the rate sequence is continuous. Considering the `co-injection` and `post-injection` separately can lead to a discontinuity (play with different values of `tbin` to test the impact of binning). Those two options should only be used when data is limited to one of the two phases.
 
 
 ```r
-rate.coinj.pred <- rseismTLS::ratemodel.val('co-injection', list(a_fb = .1, b = theta.GR$b, mc = theta.GR$mc), inj = inj.binned)
-rate.postinj.pred <- rseismTLS::ratemodel.val('post-injection', list(tau = 1, b = theta.GR$b, mc = theta.GR$mc),
-                               shutin = list(rate = rate.obs$rate[indpost][1], t = rate.obs$t[indpost][1]),
-                               t.postinj = rate.obs$t[indpost])
+rate.coinj.pred <- rseismTLS::model_rate.val('co-injection', 
+                                             list(a_fb = par.MLE$a_fb, b = par.MLE$b, mc = mc),
+                                             inj = inj.binned)
 
-plot(rate.obs$t, rate.obs$rate, type = 'S', main = 'co-injection + post-injection', col = 'grey')
-lines(rate.coinj.pred$t, rate.coinj.pred$rate, col = 'red')
-lines(rate.postinj.pred$t, rate.postinj.pred$rate, col = 'blue')
+rate.postinj.pred <- rseismTLS::model_rate.val('post-injection',
+                                               list(tau = par.MLE$tau, b = par.MLE$b, mc = mc),
+                                               shutin = list(t = tail(inj.binned$t, 1), 
+                                                             rate = seism.binned$rate[ind.post[1] - 1]),
+                                               t.postinj = seism.binned$t[ind.post])
+
+hist(seism$t, breaks = tint, main = 'co-injection + post-injection', col = 'grey', border = 'white')
+lines(rate.coinj.pred$t, rate.coinj.pred$rate, col = 'darkred')
+lines(rate.postinj.pred$t, rate.postinj.pred$rate, col = 'darkblue')
 abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 ```
 
-<img src="figs/unnamed-chunk-6-1.png" width="100%" />
+<img src="figs/unnamed-chunk-8-1.png" width="100%" />
 
-More details about the model parameterization are given in the function's documentation (`??rseismTLS::ratemodel.val`). The model parameters $a_{fb}$ and $\tau$ are estimated using the Maximum Likelihood Estimation (MLE) method for a Non-Homogeneous Poisson Process (NHPP). The Poisson log-likelihood is computed in `poi.loglik()` and the induced seismicity model log-likelihood by `ratemodel.loglik()`. See for example:
+More details about the model parameterization are given in the function's documentation (`??rseismTLS::model_rate.val`).
+
+The model parameters $a_{fb}$ and $\tau$ are estimated using the Maximum Likelihood Estimation (MLE) method for a Non-Homogeneous Poisson Process (NHPP). The Poisson log-likelihood is computed in `poi.loglik()` and the induced seismicity model log-likelihood by `ratemodel.loglik()`. See for example:
 
 
 ```r
 # the MLE estimates
-rseismTLS::ratemodel.loglik(rate.obs, list(a_fb = 0.1, tau = 1), theta.GR, t.shutin, inj = inj.binned)
-#> [1] -269.5094
+#rseismTLS::ratemodel.loglik(rate.obs, list(a_fb = 0.1, tau = 1), theta.GR, t.shutin, inj = inj.binned)
 # wrong estimates
-rseismTLS::ratemodel.loglik(rate.obs, list(a_fb = -2, tau = 5), theta.GR, t.shutin, inj = inj.binned)
-#> [1] -3841.27
+#rseismTLS::ratemodel.loglik(rate.obs, list(a_fb = -2, tau = 5), theta.GR, t.shutin, inj = inj.binned)
 ```
 
 The MLE method is applied using `ratemodel.mle()`.
 
 
 ```r
-( theta.mle <- rseismTLS::ratemodel.mle(rate.obs, theta.GR, t.shutin, inj = inj.binned) )
-#> $a_fb
-#> [1] 0.1
-#> 
-#> $tau
-#> [1] 1
-```
-
-Note that the underground feedback activation can directly be estimated via the Shapiro Seismogenic Index method (e.g., Dinske and Shapiro, 2013), subject to slight differences:
-
-
-```r
-Vtot <- sum(inj$dV)        # cubic meters
-( a_fb <- rseismTLS::a_fb.val(nrow(seism), theta.GR, Vtot) )
-#> [1] 0.1881888
+#( theta.mle <- rseismTLS::ratemodel.mle(rate.obs, theta.GR, t.shutin, inj = inj.binned) )
 ```
 
 
