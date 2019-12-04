@@ -1,3 +1,82 @@
+#' Complete Negative Log Likelihood Function
+#'
+#' Estimate the negative log likelihood of the statistical model of Mignan et al. (2017) for
+#' a specific set of input parameters.
+#'
+#' See Eq. A2 of Broccardo et al. (2017). The function is here structured to be used by optim().
+#'
+#' @param data a list containing all the necessary data:
+#' * `seism` an earthquake catalogue data frame of parameters `t` (time in dec. days) and `m` (magnitude)
+#' * `inj` matching injection profile data frame of parameters `t` (time in dec. days), `dV` (flow rate in cubic
+#' metre/day) and `V` (cumulative injected volume in cubic metres)
+#' * `ts` shut-in time (in decimal days)
+#' * `Tmax` upper range of the time window (in decimal days)
+#' @param par a vector of the input parameters `a_fb`, `tau` and `b`
+#' @return the negative log likelihood estimate for specific `par` values
+#' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
+#' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
+#' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' @seealso \code{model_par.val}
+negloglik.val <- function(data, par){
+  theta <- list(a_fb = par[1], tau = par[2], b = par[3])
+
+  N <- nrow(data$seism)
+  seism.inj <- subset(data$seism, data$seism$t <= data$ts)
+  seism.post <- subset(data$seism, data$seism$t > data$ts)
+  Ninj <- nrow(seism.inj)
+  Npost <- nrow(seism.post)
+  dV <- interp1(data$inj$t, data$inj$dV, seism.inj$t)
+  dV.ts <- tail(dV, 1)
+  V.ts <- tail(data$inj$V, 1)
+
+  C1 <- N * (theta$a_fb - theta$b * data$m0) / log10(exp(1))
+  C2 <- sum(log(dV), na.rm = T)
+  C3 <- Npost * log(dV.ts)
+  C4 <- -1 / theta$tau * (sum(seism.post$t - data$ts))
+  C5 <- -10^(theta$a_fb - theta$b * data$m0) * (V.ts + dV.ts * theta$tau * (1-exp(-(data$Tmax - data$ts)/theta$tau)))
+  C6 <- N * log(theta$b)
+  C7 <- N * log(log(10))
+  C8 <- -theta$b * log(10) * sum(data$seism$m)
+  C9 <- N  * theta$b * log(10) * (data$m0 - mbin/2)   # Mmax -> +Inf
+  nLL <- -(C1 + C2 + C3 + C4 + C5 + C6 + C7 + C8 + C9)
+  return(nLL)
+}
+
+#' Model Parameter Maximum Likelihood Estimation
+#'
+#' Provides the maximum likelihood estimates (MLE) of the parameters of the statistical model of Mignan et al. (2017)
+#' using the complete negative log likelihood function \code{negloglik.val}.
+#'
+#' Optimization done using the optim() function of the stats package.
+#'
+#' @param data a list containing all the necessary data:
+#' * `seism` an earthquake catalogue data frame of parameters `t` (time in dec. days) and `m` (magnitude)
+#' * `inj` matching injection profile data frame of parameters `t` (time in dec. days), `dV` (flow rate in cubic
+#' metre/day) and `V` (cumulative injected volume in cubic metres)
+#' * `ts` shut-in time (in decimal days)
+#' * `Tmax` upper range of the time window (in decimal days)
+#' @param par a vector of the initial values for the parameters `a_fb`, `tau` and `b` to be optimized over
+#' @return a list of the parameters' MLEs:
+#' * `a_fb` the underground feedback activation (in /cubic metre)
+#' * `tau` the mean relaxation time (in days)
+#' * `b` the slope of the Gutenberg-Richter law
+#' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
+#' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
+#' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' @seealso \code{negloglik.val}
+model_par.val <- function(data, par = c(0, 1, 1)) {
+  require(signal)       # interp1()
+  res <- optim(par = par, fn = rseismTLS::negloglik.val, data = data)
+  return(list(a_fb = res$par, tau = res$par[2], b = res$par[3], nLL = res$value))
+}
+
+
 #' Data Binning
 #'
 #' Bucketize the two main raw data sets (injection `inj` and seismicity `seism`) in `dt` bins
