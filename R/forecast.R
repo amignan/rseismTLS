@@ -1,18 +1,24 @@
-#' Complete Negative Log Likelihood Function
+#' Negative Log Likelihood Function
 #'
 #' Estimate the negative log likelihood of the statistical model of Mignan et al. (2017) for
-#' a specific set of input parameters.
+#' a specific set of input parameters, for three possible time windows (full sequence, injection phase or
+#' post-injection phase).
 #'
-#' See Eq. A2 of Broccardo et al. (2017). The function is here structured to be used by optim().
+#' See Eq. A2 of Broccardo et al. (2017) for `'full sequence'` and Eq. A3 for `'injection'`.
+#' Note that the function is here structured for the parameters to be optimized by `optim()``, which is done
+#' automatically in `model_par.mle()`. The `par` vector depends on the selected `window`, which is dealt with
+#' in `model_par.mle()` (see Details section there).
 #'
 #' @param data a list containing all the necessary data:
-#' * `seism` an earthquake catalogue data frame of parameters `t` (time in dec. days) and `m` (magnitude)
-#' * `inj` matching injection profile data frame of parameters `t` (time in dec. days), `dV` (flow rate in cubic
+#' * `seism` an earthquake catalogue data frame of parameters `t` (time in days) and `m` (magnitude)
+#' * `inj` matching injection profile data frame of parameters `t` (time in days), `dV` (flow rate in cubic
 #' metre/day) and `V` (cumulative injected volume in cubic metres)
-#' * `ts` shut-in time (in decimal days)
-#' * `Tmax` upper range of the time window (in decimal days)
-#' @param par a vector of the input parameters `a_fb`, `tau` and `b`
-#' @return the negative log likelihood estimate for specific `par` values
+#' * `ts` shut-in time (in days) (not required for "`injection`")
+#' * `Tmax` upper range of the time window (in days) (not required for "`injection`")
+#' * `lambda0` seismicity rate (per day) at shut-in (only required for "`post-injection`")
+#' @param par a vector of the input parameters
+#' @param window the window to be used: "`injection`", "`post-injection`", or "`full sequence`"
+#' @return the negative log likelihood estimate for the specified `par` values
 #' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
 #' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
 #' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
@@ -20,38 +26,74 @@
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{model_par.mle}
-negloglik.val <- function(data, par){
-  theta <- list(a_fb = par[1], tau = par[2], b = par[3])
+negloglik.val <- function(data, par, window = 'full sequence'){
+  if(window == 'full sequence'){
+    theta <- list(a_fb = par[1], tau = par[2], b = par[3])
 
-  N <- nrow(data$seism)
-  seism.inj <- subset(data$seism, data$seism$t <= data$ts)
-  seism.post <- subset(data$seism, data$seism$t > data$ts)
-  Ninj <- nrow(seism.inj)
-  Npost <- nrow(seism.post)
-  require(signal)       # interp1()
-  dV <- interp1(data$inj$t, data$inj$dV, seism.inj$t)
-  dV.ts <- tail(dV, 1)
-  V.ts <- tail(data$inj$V, 1)
+    N <- nrow(data$seism)
+    seism.inj <- subset(data$seism, data$seism$t <= data$ts)
+    seism.post <- subset(data$seism, data$seism$t > data$ts)
+    Ninj <- nrow(seism.inj)
+    Npost <- nrow(seism.post)
+    require(signal)       # interp1()
+    dV <- interp1(data$inj$t, data$inj$dV, seism.inj$t)
+    dV.ts <- tail(dV, 1)
+    V.ts <- tail(data$inj$V, 1)
 
-  C1 <- N * (theta$a_fb - theta$b * data$m0) / log10(exp(1))
-  C2 <- sum(log(dV), na.rm = T)
-  C3 <- Npost * log(dV.ts)
-  C4 <- -1 / theta$tau * (sum(seism.post$t - data$ts))
-  C5 <- -10^(theta$a_fb - theta$b * data$m0) * (V.ts + dV.ts * theta$tau * (1-exp(-(data$Tmax - data$ts)/theta$tau)))
-  C6 <- N * log(theta$b)
-  C7 <- N * log(log(10))
-  C8 <- -theta$b * log(10) * sum(data$seism$m)
-  C9 <- N  * theta$b * log(10) * (data$m0 - mbin/2)   # Mmax -> +Inf
-  nLL <- -(C1 + C2 + C3 + C4 + C5 + C6 + C7 + C8 + C9)
+    C1 <- N * (theta$a_fb - theta$b * data$m0) / log10(exp(1))
+    C2 <- sum(log(dV), na.rm = T)
+    C3 <- Npost * log(dV.ts)
+    C4 <- -1 / theta$tau * (sum(seism.post$t - data$ts))
+    C5 <- -10^(theta$a_fb - theta$b * data$m0) * (V.ts + dV.ts * theta$tau * (1-exp(-(data$Tmax - data$ts)/theta$tau)))
+    C6 <- N * log(theta$b)
+    C7 <- N * log(log(10))
+    C8 <- -theta$b * log(10) * sum(data$seism$m)
+    C9 <- N  * theta$b * log(10) * (data$m0 - mbin/2)   # Mmax -> +Inf
+    nLL <- -(C1 + C2 + C3 + C4 + C5 + C6 + C7 + C8 + C9)
+  }
+  if(window == 'injection'){
+    if(max(data$seism$t) > max(data$inj$t))
+      stop('Seismicity temporal range must be within the injection profile range')
+    theta <- list(a_fb = par[1], b = par[2])
+
+    N <- nrow(data$seism)
+    require(signal)       # interp1()
+    dV <- interp1(data$inj$t, data$inj$dV, data$seism$t)
+    V <- tail(data$inj$V, 1)
+
+    C1 <- N * (theta$a_fb - theta$b * data$m0) / log10(exp(1))
+    C2 <- sum(log(dV), na.rm = T)
+    C5b <- -10^(theta$a_fb - theta$b * data$m0) * V
+    C6 <- N * log(theta$b)
+    C7 <- N * log(log(10))
+    C8 <- -theta$b * log(10) * sum(data$seism$m)
+    C9 <- N  * theta$b * log(10) * (data$m0 - mbin/2)   # Mmax -> +Inf
+    nLL <- -(C1 + C2 + C5b + C6 + C7 + C8 + C9)
+  }
+  if(window == 'post-injection'){
+    theta <- list(tau = par[1], b = par[2])
+
+    N <- nrow(data$seism)
+
+    C3b <- N * log(data$lambda0)
+    C4 <- -1 / theta$tau * (sum(data$seism$t - data$ts))
+    C5b <- -data$lambda0 * theta$tau * (1 - exp(-(data$Tmax - data$ts)/theta$tau))
+    C6 <- N * log(theta$b)
+    C7 <- N * log(log(10))
+    C8 <- -theta$b * log(10) * sum(data$seism$m)
+    C9 <- N * theta$b * log(10) * (data$m0 - mbin/2)   # Mmax -> +Inf
+    nLL <- -(C3b + C4 + C5b + C6 + C7 + C8 + C9)
+  }
   return(nLL)
 }
 
 #' Model Parameter Maximum Likelihood Estimation
 #'
 #' Provides the maximum likelihood estimates (MLE) of the parameters of the statistical model of Mignan et al. (2017)
-#' using the complete negative log likelihood function \code{negloglik.val}.
+#' using the negative log likelihood function `negloglik.val()` for one of the three possible time windows (full sequence, injection phase or
+#' post-injection phase).
 #'
-#' Optimization done using the optim() function of the stats package.
+#' Optimization done using the `optim()`` function of the stats package.
 #'
 #' @param data a list containing all the necessary data:
 #' * `seism` an earthquake catalogue data frame of parameters `t` (time in dec. days) and `m` (magnitude)
@@ -59,7 +101,11 @@ negloglik.val <- function(data, par){
 #' metre/day) and `V` (cumulative injected volume in cubic metres)
 #' * `ts` shut-in time (in decimal days)
 #' * `Tmax` upper range of the time window (in decimal days)
-#' @param par a vector of the initial values for the parameters `a_fb`, `tau` and `b` to be optimized over
+#' @param theta.init an optional list of the initial values for the parameters to be optimized over
+#' * `a_fb` the underground feedback activation (in /cubic metre)
+#' * `tau` the mean relaxation time (in days)
+#' * `b` the slope of the Gutenberg-Richter law
+#' @param window the window to be used: "`injection`", "`post-injection`", or "`full sequence`"
 #' @return a list of the parameters' MLEs:
 #' * `a_fb` the underground feedback activation (in /cubic metre)
 #' * `tau` the mean relaxation time (in days)
@@ -71,9 +117,25 @@ negloglik.val <- function(data, par){
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{negloglik.val}
-model_par.mle <- function(data, par = c(0, 1, 1)) {
-  res <- optim(par = par, fn = rseismTLS::negloglik.val, data = data)
-  return(list(a_fb = res$par[1], tau = res$par[2], b = res$par[3], nLL = res$value))
+model_par.mle <- function(data, theta.init = list(a_fb = -1, tau = 1, b = 1), window = 'full sequence') {
+  if(window == 'full sequence') {
+    par <- numeric(3)
+    par[1] <- theta.init$a_fb; par[2] <- theta.init$tau; par[3] <- theta.init$b
+  }
+  if(window == 'injection') {
+    par <- numeric(2)
+    par[1] <- theta.init$a_fb; par[2] <- theta.init$b
+  }
+  if(window == 'post-injection') {
+    par <- numeric(2)
+    par[1] <- theta.init$tau; par[2] <- theta.init$b
+  }
+  res <- optim(par = par, fn = negloglik.val, data = data, window = window)
+  if(window == 'full sequence') {a_fb <- res$par[1]; tau <- res$par[2]; b <- res$par[3]}
+  if(window == 'injection') {a_fb <- res$par[1]; tau <- NA; b <- res$par[2]}
+  if(window == 'post-injection') {a_fb <- NA; tau <- res$par[1]; b <- res$par[2]}
+
+  return(list(a_fb = a_fb, tau = tau, b = b, nLL = res$value))
 }
 
 #' Data Binning
@@ -144,22 +206,21 @@ a_fb.val <- function(Ntot, b, mc, Vtot) {
 #' 2013; Mignan, 2016; van der Elst et al., 2016). The exponential model was
 #' verified to perform best when tested on 6 stimulations (Mignan et al., 2017).
 #'
-#' The flow rate is here defined as `dV`, the volume injected in the period (t-dt, dt) with `dt`
-#' defined in the `data.bin()` function. The seismicity rate is modelled for the same time vector
-#' as `inj` for co-injection and uses `t.postinj` for post-injection.
+#' The binned injection profile is defined in the `data.bin()` function. The seismicity rate
+#' is modelled for the same time vector as `inj` for the injection and uses `t.postinj` for post-injection.
 #'
 #' @param window the window to be used: "`injection`", "`post-injection`", or "`full sequence`"
 #' @param theta the list of model parameters:
 #' * `a_fb` the underground feedback activation (`NULL` for "`post-injection`")
-#' * `tau` the mean relaxation time (`NULL` for "`co-injection`")
+#' * `tau` the mean relaxation time (`NULL` for "`injection`")
 #' * `b` the slope of the Gutenberg-Richter law
 #' * `mc` the completeness magnitude
 #' @param inj the binned injection profile data frame with parameters
 #' * `t` the occurrence time (in decimal days)
 #' * `dV` the flow rate (in cubic metres per bin)
-#' @param shutin the list of shut-in parameters (required by "`post-injection`")
-#' * `t` the shut-in time (in decimal days)
-#' * `rate` the rate of induced seismicity at shut-in
+#' @param shutin the list of shut-in parameters
+#' * `t` the shut-in time (in decimal days) (required for "`full sequence`" and "`post-injection`")
+#' * `rate` the rate of induced seismicity at shut-in (required for "`post-injection`")
 #' @param t.postinj the time vector for which a seismicity rate is predicted
 #' @return A data frame of the modelled seismicity rate with parameters:
 #' * `t` the time (in decimal days)
@@ -196,7 +257,7 @@ model_rate.val <- function(window, theta, inj = NULL, shutin = NULL, t.postinj =
     if(is.null(inj)) stop('injection profile required')
     if(is.null(theta$a_fb) | is.null(theta$b) | is.null(theta$mc) | is.null(theta$tau))
       stop('parameters a_fb, tau, b and mc required in theta')
-    if(!is.null(shutin)) print('warning: shutin data overwritten by model')
+    if(is.null(shutin)) stop('shutin data missing')
     if(is.null(t.postinj)) stop('t.postinj time vector missing')
     rate.stimul <-  10 ^ theta$a_fb * 10 ^ (-theta$b * theta$mc) * inj$dV
     rate.relax <- rate.stimul[length(rate.stimul)] * exp(-(t.postinj - shutin$t) / theta$tau)
