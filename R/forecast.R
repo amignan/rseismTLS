@@ -199,7 +199,7 @@ model_rate.val <- function(window, theta, inj = NULL, shutin = NULL, t.postinj =
     if(!is.null(shutin)) print('warning: shutin data overwritten by model')
     if(is.null(t.postinj)) stop('t.postinj time vector missing')
     rate.stimul <-  10 ^ theta$a_fb * 10 ^ (-theta$b * theta$mc) * inj$dV
-    rate.relax <- rate.stimul[length(rate.stimul)] * exp(-(t.postinj - t.postinj[1]) / theta$tau)
+    rate.relax <- rate.stimul[length(rate.stimul)] * exp(-(t.postinj - shutin$t) / theta$tau)
     rate <- c(rate.stimul, rate.relax)
     t <- c(inj$t, t.postinj)
   }
