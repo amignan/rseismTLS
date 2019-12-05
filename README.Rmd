@@ -117,11 +117,11 @@ seism <- subset(seism, m > mc - mbin / 2)                    # complete earthqua
 (b.Aki <- rseismNet::beta.mle(seism$m, mc, mbin) / log(10))  # Aki (1965) MLE method
 ```
 
-The model parameters are estimated with `model_par.mle()` by minimizing the negative log-likelihood function `negloglik.val()`, as given in Broccardo et al. (2017:A2):
+The model parameters are estimated with `model_par.mle_point()` by minimizing the negative log-likelihood function `negloglik_point.val()`, as given in Broccardo et al. (2017:A2):
 
 ```{r}
 data <- list(seism = seism, inj = inj, m0 = mc, ts = t.shutin, Tmax = 12)
-(par.MLE <- rseismTLS::model_par.mle(data))
+( par.MLE <- rseismTLS::model_par.mle_point(data) )
 ```
 
 Note that the $b$ estimate is close to the MLE value obtained directly from the frequency-magnitude distribution (see `b.Aki`). We can also calculate $a_{fb}$ via the Shapiro Seismogenic Index (SI) method (e.g., Dinske and Shapiro, 2013)
@@ -144,7 +144,8 @@ inj.binned <- data.binned$inj.binned
 ind.post <- which(seism.binned$t > tail(inj.binned$t, 1))
 rate.pred <- rseismTLS::model_rate.val('full sequence', 
                                        list(a_fb = par.MLE$a_fb, tau = par.MLE$tau, b = par.MLE$b, mc = mc), 
-                                       inj = inj.binned, t.postinj = seism.binned$t[ind.post])
+                                       inj = inj.binned, shutin = list(t = t.shutin), 
+                                       t.postinj = seism.binned$t[ind.post])
 
 par(mfrow = c(1, 1))
 hist(seism$t, breaks = tint, main = 'full sequence', col = 'grey', border = 'white')
@@ -155,27 +156,60 @@ abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 We used the option `window = 'full sequence'`, which means that the rate sequence is continuous. Considering the `injection` and `post-injection` separately can lead to a discontinuity (play with different values of `tbin` to test the impact of binning). Those two options should only be used when data is limited to one of the two phases.
 
 ```{r, fig.show='hold', fig.path='figs/'}
-rate.coinj.pred <- rseismTLS::model_rate.val('injection', 
+rate_inj.pred <- rseismTLS::model_rate.val('injection', 
                                              list(a_fb = par.MLE$a_fb, b = par.MLE$b, mc = mc),
                                              inj = inj.binned)
 
-rate.postinj.pred <- rseismTLS::model_rate.val('post-injection',
+rate_postinj.pred <- rseismTLS::model_rate.val('post-injection',
                                                list(tau = par.MLE$tau, b = par.MLE$b, mc = mc),
-                                               shutin = list(t = tail(inj.binned$t, 1), 
+                                               shutin = list(t = t.shutin, 
                                                              rate = seism.binned$rate[ind.post[1] - 1]),
                                                t.postinj = seism.binned$t[ind.post])
 
-hist(seism$t, breaks = tint, main = 'injection + post-injection', col = 'grey', border = 'white')
-lines(rate.coinj.pred$t, rate.coinj.pred$rate, col = 'darkred')
-lines(rate.postinj.pred$t, rate.postinj.pred$rate, col = 'darkblue')
+hist(seism$t, breaks = tint, main = 'injection + post-injection (v.1)', col = 'grey', border = 'white')
+lines(rate_inj.pred$t, rate_inj.pred$rate, col = 'darkred')
+lines(rate_postinj.pred$t, rate_postinj.pred$rate, col = 'darkblue')
 abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 ```
 
-It should be noted that in the case in which only the seismicity rate is available (`seism.binned`), the model parameters can be estimated using the Poisson log-likelihood function, assuming a Non-Homogeneous Poisson Process (NHPP). It is computed in `poi.loglik()` and the induced seismicity model log-likelihood by `ratemodel.loglik()`.
+In the case of independent time windows on each side of the shut-in time, the model parameters should be estimated for those specific periods. This is done as previously, but now adding the `window` type in `model_par.mle_point()`:
+
+```{r}
+data_inj <- list(seism = subset(seism, t <= t.shutin), inj = inj, m0 = mc, ts = t.shutin, Tmax = 12)
+( par_inj.MLE <- rseismTLS::model_par.mle_point(data_inj, window = 'injection') )
+
+data_post <- list(seism = subset(seism, t > t.shutin), m0 = mc, ts = t.shutin, Tmax = 12, 
+                  lambda0 = seism.binned$rate[ind.post[1] - 1] / tbin)
+( par_post.MLE <- rseismTLS::model_par.mle_point(data_post, list(a_fb = 0, tau = 1, b = 1), window = 'post-injection') )
+```
+
+The parameter estimates here differ due to the fact that there is no constraint to have a continuous function over the full sequence. The next plot shows that the difference is not significant for $a_{fb}$ and $\tau$. In the Basel dataset, the $b$-value is known to decrease over time, which is here clearly visible (compare `par_inj.MLE$b` to `par_post.MLE$b`).
+
+```{r, fig.show='hold', fig.path='figs/'}
+rate_inj.pred <- rseismTLS::model_rate.val('injection', 
+                                             list(a_fb = par_inj.MLE$a_fb, b = par_inj.MLE$b, mc = mc),
+                                             inj = inj.binned)
+
+rate_postinj.pred <- rseismTLS::model_rate.val('post-injection',
+                                               list(tau = par_post.MLE$tau, b = par_post.MLE$b, mc = mc),
+                                               shutin = list(t = t.shutin, 
+                                                             rate = seism.binned$rate[ind.post[1] - 1]),
+                                               t.postinj = seism.binned$t[ind.post])
+
+hist(seism$t, breaks = tint, main = 'injection + post-injection (v.2)', col = 'grey', border = 'white')
+lines(rate_inj.pred$t, rate_inj.pred$rate, col = 'darkred')
+lines(rate_postinj.pred$t, rate_postinj.pred$rate, col = 'darkblue')
+abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
+```
+
+
+#### NB: when the earthquake count data is available instead of an earthquake catalogue
+
+In the case in which only the seismicity rate `seism.binned` is available (e.g, catalogue not available but histogram data digitizable from a published figure), the model parameters can still be estimated. Then the Poisson log-likelihood function `negloglik_hist.val()` is used instead of `negloglik_point.val()`, assuming a Non-Homogeneous Poisson Process (NHPP). It is computed and the model parameters optimized in `model_par.mle_hist()`:
 
 ```{r}
 # MLE values based on binned data
-#( par.MLE <- rseismTLS::model_par.val(data) )
+NULL
 ```
 
 
