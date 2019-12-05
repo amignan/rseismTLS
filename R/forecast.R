@@ -25,8 +25,8 @@
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
-#' @seealso \code{model_par.mle}
-negloglik.val <- function(data, par, window = 'full sequence'){
+#' @seealso \code{model_par.mle_point}
+negloglik_point.val <- function(data, par, window = 'full sequence'){
   if(window == 'full sequence'){
     theta <- list(a_fb = par[1], tau = par[2], b = par[3])
 
@@ -116,8 +116,8 @@ negloglik.val <- function(data, par, window = 'full sequence'){
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
-#' @seealso \code{negloglik.val}
-model_par.mle <- function(data, theta.init = list(a_fb = -1, tau = 1, b = 1), window = 'full sequence') {
+#' @seealso \code{negloglik_point.val}
+model_par.mle_point <- function(data, theta.init = list(a_fb = -1, tau = 1, b = 1), window = 'full sequence') {
   if(window == 'full sequence') {
     par <- numeric(3)
     par[1] <- theta.init$a_fb; par[2] <- theta.init$tau; par[3] <- theta.init$b
@@ -130,7 +130,7 @@ model_par.mle <- function(data, theta.init = list(a_fb = -1, tau = 1, b = 1), wi
     par <- numeric(2)
     par[1] <- theta.init$tau; par[2] <- theta.init$b
   }
-  res <- optim(par = par, fn = negloglik.val, data = data, window = window)
+  res <- optim(par = par, fn = negloglik_point.val, data = data, window = window)
   if(window == 'full sequence') {a_fb <- res$par[1]; tau <- res$par[2]; b <- res$par[3]}
   if(window == 'injection') {a_fb <- res$par[1]; tau <- NA; b <- res$par[2]}
   if(window == 'post-injection') {a_fb <- NA; tau <- res$par[1]; b <- res$par[2]}
