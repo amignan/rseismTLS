@@ -4,7 +4,7 @@
 \alias{data.bin}
 \title{Data Binning}
 \usage{
-data.bin(seism, inj, dt)
+data.bin(seism, inj, tint)
 }
 \arguments{
 \item{seism}{an earthquake catalogue data frame of parameters:
@@ -20,20 +20,18 @@ data.bin(seism, inj, dt)
 \item \code{V} the cumulative injected volume (in cubic metres)
 }}
 
-\item{dt}{time increment in same unit as \code{t}}
+\item{tint}{time intervals of constant length tbin (in decimal days)}
 }
 \value{
 A list of 2 data frames binned in time:
 \itemize{
-\item \code{seism.rate} with parameters \code{t} and \code{rate} (number of events per \code{dt})
-\item \code{inj.binned} with parameters \code{t}, \code{dV} and \code{V}
+\item \code{seism.binned} with parameters \code{t} and \code{rate} (number of events per \code{tbin})
+\item \code{inj.binned} with parameters \code{t}, \code{dV} (in cubic metres per \code{tbin}) and \code{V}
 }
 }
 \description{
-Bucketize the two main raw data sets (injection \code{inj} and seismicity \code{seism}) in \code{dt} bins
-and compute the seismicity rate \code{seism.rate} and injected volume \code{inj.binned} at times t
+Bucketize the two main data sets (injection \code{inj} and seismicity \code{seism}) in time intervals \code{tint}.
 }
 \details{
-Time \code{t} represents the past \code{dt} increment and is defined in the interval for which
-data are available.
+Time \code{t} represents the centre of each bin of the time intervals \code{tint}.
 }
