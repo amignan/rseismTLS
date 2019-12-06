@@ -42,7 +42,8 @@ negloglik_point.val <- function(data, par, window = 'full sequence'){
     V.ts <- tail(data$inj$V, 1)
 
     C1 <- N * (theta$a_fb - theta$b * data$m0) / log10(exp(1))
-    C2 <- sum(log(dV), na.rm = T)
+    log_dV <- log(dV); log_dV[!is.finite(log_dV)] <- NA  # case of dV = 0 during injection
+    C2 <- sum(log_dV, na.rm = T)
     C3 <- Npost * log(dV.ts)
     C4 <- -1 / theta$tau * (sum(seism.post$t - data$ts))
     C5 <- -10^(theta$a_fb - theta$b * data$m0) * (V.ts + dV.ts * theta$tau * (1-exp(-(data$Tmax - data$ts)/theta$tau)))
@@ -63,7 +64,8 @@ negloglik_point.val <- function(data, par, window = 'full sequence'){
     V <- tail(data$inj$V, 1)
 
     C1 <- N * (theta$a_fb - theta$b * data$m0) / log10(exp(1))
-    C2 <- sum(log(dV), na.rm = T)
+    log_dV <- log(dV); log_dV[!is.finite(log_dV)] <- NA  # case of dV = 0 during injection
+    C2 <- sum(log_dV, na.rm = T)
     C5b <- -10^(theta$a_fb - theta$b * data$m0) * V
     C6 <- N * log(theta$b)
     C7 <- N * log(log(10))
