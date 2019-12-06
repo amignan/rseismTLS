@@ -134,7 +134,7 @@ model_par.mle_point <- function(data, theta.init = list(a_fb = -1, tau = 1, b = 
     par <- numeric(2)
     par[1] <- theta.init$tau; par[2] <- theta.init$b
   }
-  res <- optim(par = par, fn = negloglik_point.val, data = data, window = window)
+  res <- optim(par = par, fn = rseismTLS::negloglik_point.val, data = data, window = window)
   if(window == 'full sequence') {a_fb <- res$par[1]; tau <- res$par[2]; b <- res$par[3]}
   if(window == 'injection') {a_fb <- res$par[1]; tau <- NA; b <- res$par[2]}
   if(window == 'post-injection') {a_fb <- NA; tau <- res$par[1]; b <- res$par[2]}
@@ -320,7 +320,7 @@ negloglik_hist.val <- function(data, par, window = 'full sequence'){
     ind.post <- seism.binned$t > data$ts
     res <- rseismTLS::model_rate.val('post-injection',
                                      list(tau = theta$tau), shutin = list(t = data$ts, rate = data$lambda0),
-                                     t.postinj = seism.binned$t[ind.post])
+                                     t.postinj = data$seism.binned$t[ind.post])
 
   }
   pred <- res$rate
@@ -361,16 +361,16 @@ model_par.mle_hist <- function(data, theta.init = list(a_fb = -1, tau = 1), wind
   if(window == 'full sequence') {
     par <- numeric(2)
     par[1] <- theta.init$a_fb; par[2] <- theta.init$tau
-    res <- optim(par = par, fn = negloglik_hist.val, data = data, window = window)
+    res <- optim(par = par, fn = rseismTLS::negloglik_hist.val, data = data, window = window)
   }
   if(window == 'injection') {
     par <- theta.init$a_fb
-    res <- optim(par = par, fn = negloglik_hist.val, data = data, window = window,
+    res <- optim(par = par, fn = rseismTLS::negloglik_hist.val, data = data, window = window,
                  method = 'Brent', lower = -10, upper = 5)   #wide a_fb range [-10, 5]
   }
   if(window == 'post-injection') {
     par <- theta.init$tau
-    res <- optim(par = par, fn = negloglik_hist.val, data = data, window = window,
+    res <- optim(par = par, fn = rseismTLS::negloglik_hist.val, data = data, window = window,
                  method = 'Brent', lower = 0, upper = 50)    #wide tau range [0, 50]
   }
   if(window == 'full sequence') {a_fb <- res$par[1]; tau <- res$par[2]}
