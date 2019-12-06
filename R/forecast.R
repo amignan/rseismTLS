@@ -1,4 +1,4 @@
-#' Negative Log Likelihood Function
+#' Negative Log Likelihood Function (Point Data)
 #'
 #' Estimate the negative log likelihood of the statistical model of Mignan et al. (2017) for
 #' a specific set of input parameters, for three possible time windows (full sequence, injection phase or
@@ -6,13 +6,14 @@
 #'
 #' See Eq. A2 of Broccardo et al. (2017) for `'full sequence'` and Eq. A3 for `'injection'`.
 #' Note that the function is here structured for the parameters to be optimized by `optim()``, which is done
-#' automatically in `model_par.mle()`. The `par` vector depends on the selected `window`, which is dealt with
-#' in `model_par.mle()` (see Details section there).
+#' automatically in `model_par.mle_point()`. The `par` vector depends on the selected `window`, which is dealt with
+#' in `model_par.mle_point()` (see Details section there).
 #'
-#' @param data a list containing all the necessary data:
+#' @param data a list containing all the necessary point data:
 #' * `seism` an earthquake catalogue data frame of parameters `t` (time in days) and `m` (magnitude)
 #' * `inj` matching injection profile data frame of parameters `t` (time in days), `dV` (flow rate in cubic
 #' metre/day) and `V` (cumulative injected volume in cubic metres)
+#' * `m0` the minimum magnitude cutoff of the earthquake catalogue
 #' * `ts` shut-in time (in days) (not required for "`injection`")
 #' * `Tmax` upper range of the time window (in days) (not required for "`injection`")
 #' * `lambda0` seismicity rate (per day) at shut-in (only required for "`post-injection`")
@@ -25,7 +26,7 @@
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
-#' @seealso \code{model_par.mle_point}
+#' @seealso \code{model_par.mle_point}, \code{model_par.mle_hist}, \code{negloglik_hist.val}
 negloglik_point.val <- function(data, par, window = 'full sequence'){
   if(window == 'full sequence'){
     theta <- list(a_fb = par[1], tau = par[2], b = par[3])
@@ -87,20 +88,22 @@ negloglik_point.val <- function(data, par, window = 'full sequence'){
   return(nLL)
 }
 
-#' Model Parameter Maximum Likelihood Estimation
+#' Model Parameter Maximum Likelihood Estimation (Point Data)
 #'
 #' Provides the maximum likelihood estimates (MLE) of the parameters of the statistical model of Mignan et al. (2017)
-#' using the negative log likelihood function `negloglik.val()` for one of the three possible time windows (full sequence, injection phase or
+#' using the negative log likelihood function `negloglik_point.val()` for one of the three possible time windows (full sequence, injection phase or
 #' post-injection phase).
 #'
 #' Optimization done using the `optim()`` function of the stats package.
 #'
-#' @param data a list containing all the necessary data:
-#' * `seism` an earthquake catalogue data frame of parameters `t` (time in dec. days) and `m` (magnitude)
-#' * `inj` matching injection profile data frame of parameters `t` (time in dec. days), `dV` (flow rate in cubic
+#' @param data a list containing all the necessary point data:
+#' * `seism` an earthquake catalogue data frame of parameters `t` (time in days) and `m` (magnitude)
+#' * `inj` matching injection profile data frame of parameters `t` (time in days), `dV` (flow rate in cubic
 #' metre/day) and `V` (cumulative injected volume in cubic metres)
-#' * `ts` shut-in time (in decimal days)
-#' * `Tmax` upper range of the time window (in decimal days)
+#' * `m0` the minimum magnitude cutoff of the earthquake catalogue
+#' * `ts` shut-in time (in days) (not required for "`injection`")
+#' * `Tmax` upper range of the time window (in days) (not required for "`injection`")
+#' * `lambda0` seismicity rate (per day) at shut-in (only required for "`post-injection`")
 #' @param theta.init an optional list of the initial values for the parameters to be optimized over
 #' * `a_fb` the underground feedback activation (in /cubic metre)
 #' * `tau` the mean relaxation time (in days)
@@ -110,13 +113,14 @@ negloglik_point.val <- function(data, par, window = 'full sequence'){
 #' * `a_fb` the underground feedback activation (in /cubic metre)
 #' * `tau` the mean relaxation time (in days)
 #' * `b` the slope of the Gutenberg-Richter law
+#' * `nLL` the negative log likelihood value for the optimized parameters
 #' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
 #' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
 #' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
-#' @seealso \code{negloglik_point.val}
+#' @seealso \code{negloglik_point.val}, \code{negloglik_hist.val}, \code{model_par.mle_hist}
 model_par.mle_point <- function(data, theta.init = list(a_fb = -1, tau = 1, b = 1), window = 'full sequence') {
   if(window == 'full sequence') {
     par <- numeric(3)
@@ -158,10 +162,10 @@ model_par.mle_point <- function(data, theta.init = list(a_fb = -1, tau = 1, b = 
 data.bin <- function(seism, inj, tint) {
   seism.binned <- hist(seism$t, breaks = tint, plot = F)
 
-  dt <- unique(diff(tint))[1]
+  tbin <- unique(diff(tint))[1]
   require(signal)       # interp1()
   inj.binned <- data.frame(t = seism.binned$mids,
-                           dV = interp1(c(0, inj$t), c(0, inj$dV), seism.binned$mids) * dt,
+                           dV = interp1(c(0, inj$t), c(0, inj$dV), seism.binned$mids) * tbin,
                            V = interp1(c(0, inj$t), c(0, inj$V), seism.binned$mids))
 
   return(list(seism.binned = data.frame(t = seism.binned$mids, rate = seism.binned$counts),
@@ -267,123 +271,111 @@ model_rate.val <- function(window, theta, inj = NULL, shutin = NULL, t.postinj =
   return(data.frame(t = t, rate = rate))
 }
 
-#' Poisson Log-Likelihood Function
+#' Negative Log Likelihood Function (Histogram Data)
 #'
-#' Computes the log-likelihood of the Poisson distribution
+#' Estimate the negative log likelihood of the Non-Homogeneous Poisson Process (NHPP) derived from the statistical
+#' model of Mignan et al. (2017) for histogram data and a specific set of input parameters, for three possible time
+#' windows (full sequence, injection phase or post-injection phase).
 #'
-#' @param obs a vector of observed rates
-#' @param pred a vector of predicted rates
-#' @return The Poisson log-likelihood estimate
-poi.loglik <- function(obs = obs, pred = pred) {
-  sum(obs * log(pred) - pred - log(factorial(obs)), na.rm = T)
+#' Note that the function is here structured for the parameters to be optimized by `optim()``, which is done
+#' automatically in `model_par.mle_hist()`. The `par` vector depends on the selected `window`, which is dealt with
+#' in `model_par.mle_hist()` (see Details section there).
+#'
+#' @param data a list containing all the necessary histogram data:
+#' * `seism.binned` an earthquake-rate histogram data frame of parameters `t` (time in days) and `rate` (per time bin)
+#' * `inj.binned` matching binned injection profile data frame of parameters `t` (time in days), `dV` (flow rate in cubic
+#' metre/time bin) and `V` (cumulative injected volume in cubic metres)
+#' * `b` the b-value of the earthquake catalogue (not required for "`post-injection`")
+#' * `m0` the minimum magnitude cutoff of the earthquake catalogue (not required for "`post-injection`")
+#' * `ts` shut-in time (in days) (not required for "`injection`")
+#' * `lambda0` seismicity rate (per day) at shut-in (only required for "`post-injection`")
+#' @param par a vector of the input parameters
+#' @param window the window to be used: "`injection`", "`post-injection`", or "`full sequence`"
+#' @return the negative log likelihood estimate for the specified `par` values
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' @seealso \code{model_par.mle_hist}, \code{model_par.mle_point}, \code{negloglik_point.val}, \code{data.bin}
+negloglik_hist.val <- function(data, par, window = 'full sequence'){
+  obs <- data$seism.binned$rate
+
+  if(window == 'full sequence'){
+    theta <- list(a_fb = par[1], tau = par[2])
+
+    ind.post <- which(data$seism.binned$t > tail(data$inj.binned$t, 1))
+    res <- rseismTLS::model_rate.val('full sequence',
+                                     list(a_fb = theta$a_fb, tau = theta$tau, b = data$b, mc = data$m0),
+                                     inj = data$inj.binned, shutin = list(t = data$ts),
+                                     t.postinj = data$seism.binned$t[ind.post])
+  }
+  if(window == 'injection'){
+    theta <- list(a_fb = par)
+
+    res <- rseismTLS::model_rate.val('injection',
+                                     list(a_fb = theta$a_fb, b = data$b, mc = data$m0), inj = data$inj.binned)
+  }
+  if(window == 'post-injection'){
+    theta <- list(tau = par)
+
+    ind.post <- seism.binned$t > data$ts
+    res <- rseismTLS::model_rate.val('post-injection',
+                                     list(tau = theta$tau), shutin = list(t = data$ts, rate = data$lambda0),
+                                     t.postinj = seism.binned$t[ind.post])
+
+  }
+  pred <- res$rate
+  nLL <- -sum(obs * log(pred) - pred - log(factorial(obs)), na.rm = T)
+  return(nLL)
 }
 
-#' Induced Seismicity Model Log-Likelihood Function
+#' Model Parameter Maximum Likelihood Estimation (Histogram Data)
 #'
-#' Estimates the log-likelihood of the induced seismicity statistical
-#' model `ratemodel.val()` using the Poisson formulation `poi.loglik()`.
+#' Provides the maximum likelihood estimates (MLE) of the parameters of the Non-Homogeneous Poisson Process (NHPP) derived from
+#' the statistical model of Mignan et al. (2017) using the negative log likelihood function `negloglik_hist.val()` for
+#' one of the three possible time windows (full sequence, injection phase or post-injection phase).
 #'
-#' The function automatically determines the method ("`co-injection`",
-#' "`post-injection`", or "`full sequence`") from `data` and `t.shutin`.
-#' `t.shutin` can be set to `Inf` if unknown in the future.
+#' Optimization done using the `optim()`` function of the stats package. In contrast to point-data MLE parameter
+#' optimization, the b-value is here an input instead of an output.
 #'
-#' @param data The observed seismicity rate data frame
-#' * `t` the time (in decimal days)
-#' * `rate` the rate, or number of events at time `t`
-#' @param theta.mle The list of model parameters
-#' * `a_fb` the underground feedback activation (`NULL` for "`post-injection`")
-#' * `tau` the mean relaxation time (`NULL` for "`co-injection`")
-#' @param theta.GR The list of Gutenberg-Richter law parameters
-#' * `mc` the completeness magnitude
-#' * `b` the slope of the Gutenberg-Richter law
-#' @param t.shutin The shut-in time (in decimal days)
-#' @param inj the binned injection profile data frame with parameters (not required for "`post-injection`")
-#' * `t` the occurrence time (in decimal days)
-#' * `dV` the injected volume (in cubic metres) at `t`
-#' @return the model's log-likelihood estimate
-ratemodel.loglik <- function(data, theta.mle, theta.GR, t.shutin, inj = NULL) {
-  if (is.null(t.shutin)) stop('t.shutin missing. Define t.shutin = Inf if unknown in the future')
-  tmin <- min(data$t)
-  tmax <- max(data$t)
-  if (tmax <= t.shutin) method <- 'co-injection'
-  if (tmin < t.shutin & tmax > t.shutin) method <- 'full sequence'
-  if (tmin >= t.shutin) method <- 'post-injection'
-
-  theta <- list(a_fb = theta.mle$a_fb, tau = theta.mle$tau, b = theta.GR$b, mc = theta.GR$mc)
-
-  if (method == 'co-injection') rate.pred <- ratemodel.val('co-injection', theta, inj = inj)
-  if (method == 'post-injection') {
-    indpost <- data$t >= t.shutin
-    shutin = list(rate = data$rate[indpost][1], t = data$t[indpost][1])
-    rate.pred <- ratemodel.val('post-injection', theta, shutin = shutin, t.postinj = data$t[indpost])
+#' @param data a list containing all the necessary histogram data:
+#' * `seism.binned` an earthquake-rate histogram data frame of parameters `t` (time in days) and `rate` (per time bin)
+#' * `inj.binned` matching binned injection profile data frame of parameters `t` (time in days), `dV` (flow rate in cubic
+#' metre/time bin) and `V` (cumulative injected volume in cubic metres)
+#' * `b` the b-value of the earthquake catalogue (not required for "`post-injection`")
+#' * `m0` the minimum magnitude cutoff of the earthquake catalogue (not required for "`post-injection`")
+#' * `ts` shut-in time (in days) (not required for "`injection`")
+#' * `lambda0` seismicity rate (per day) at shut-in (only required for "`post-injection`")
+#' @param theta.init an optional list of the initial values for the parameters to be optimized over
+#' * `a_fb` the underground feedback activation (in /cubic metre)
+#' * `tau` the mean relaxation time (in days)
+#' @param window the window to be used: "`injection`", "`post-injection`", or "`full sequence`"
+#' @return a list of the parameters' MLEs:
+#' * `a_fb` the underground feedback activation (in /cubic metre)
+#' * `tau` the mean relaxation time (in days)
+#' * `nLL` the negative log likelihood value for the optimized parameters
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' @seealso \code{negloglik_hist.val}, \code{negloglik_point.val}, \code{model_par.mle_point}, \code{data.bin}
+model_par.mle_hist <- function(data, theta.init = list(a_fb = -1, tau = 1), window = 'full sequence') {
+  if(window == 'full sequence') {
+    par <- numeric(2)
+    par[1] <- theta.init$a_fb; par[2] <- theta.init$tau
+    res <- optim(par = par, fn = negloglik_hist.val, data = data, window = window)
   }
-  if (method == 'full sequence') {
-    indpost <- data$t >= t.shutin
-    rate.pred <- ratemodel.val('full sequence', theta, inj = inj, t.postinj = data$t[indpost])
+  if(window == 'injection') {
+    par <- theta.init$a_fb
+    res <- optim(par = par, fn = negloglik_hist.val, data = data, window = window,
+                 method = 'Brent', lower = -10, upper = 5)   #wide a_fb range [-10, 5]
   }
-  loglik <- poi.loglik(obs = data$rate, pred = rate.pred$rate)
-  return(loglik)
+  if(window == 'post-injection') {
+    par <- theta.init$tau
+    res <- optim(par = par, fn = negloglik_hist.val, data = data, window = window,
+                 method = 'Brent', lower = 0, upper = 50)    #wide tau range [0, 50]
+  }
+  if(window == 'full sequence') {a_fb <- res$par[1]; tau <- res$par[2]}
+  if(window == 'injection') {a_fb <- res$par[1]; tau <- NA}
+  if(window == 'post-injection') {a_fb <- NA; tau <- res$par[1]}
+
+  return(list(a_fb = a_fb, tau = tau, nLL = res$value))
 }
-
-#' Induced Seismicity model MLE
-#'
-#' Maximum Likelihood Estimation (MLE) of the induced seismicity model
-#' parameters `a_fb` and `tau`.
-#'
-#' The maximization is done on the `ratemodel.loglik()` result.
-#'
-#' @param data The observed seismicity rate data frame
-#' * `t` the time (in decimal days)
-#' * `rate` the rate, or number of events at time `t`
-#' @param theta.GR The list of Gutenberg-Richter law parameters
-#' * `mc` the completeness magnitude
-#' * `b` the slope of the Gutenberg-Richter law
-#' @param t.shutin The shut-in time (in decimal days)
-#' @param inj the binned injection profile data frame with parameters (not required for "`post-injection`")
-#' * `t` the occurrence time (in decimal days)
-#' * `dV` the injected volume (in cubic metres) at `t`
-#' @return The list of estimated parameters
-#' * `a_fb` the underground feedback activation (`NULL` for "`post-injection`")
-#' * `tau` the mean relaxation time (`NULL` for "`co-injection`")
-ratemodel.mle <- function(data, theta.GR, t.shutin, inj = NULL) {
-  if (is.null(t.shutin)) stop('t.shutin missing. Define t.shutin = Inf if unknown in the future')
-  tmin <- min(data$t)
-  tmax <- max(data$t)
-  if (tmax <= t.shutin) method <- 'co-injection'
-  if (tmin < t.shutin & tmax > t.shutin) method <- 'full sequence'
-  if (tmin >= t.shutin) method <- 'post-injection'
-
-  if (method == 'co-injection') {
-    a_fb.i <- seq(-8, 2, .1)
-
-    loglik <- sapply(1:length(a_fb.i), function(i) ratemodel.loglik(data, list(a_fb = a_fb.i[i]),
-                                                                    theta.GR, t.shutin, inj = inj))
-    indmax <- which(loglik == max(loglik, na.rm = T))
-    theta.mle <- list(a_fb = a_fb.i[indmax])
-  }
-  if (method == 'post-injection') {
-    tau.i <- c(seq(.1,.9,.1), seq(1, 30))
-
-    loglik <- sapply(1:length(tau.i), function(i) ratemodel.loglik(data, list(tau = tau.i[i]),
-                                                                   theta.GR, t.shutin))
-    indmax <- which(loglik == max(loglik, na.rm = T))
-    theta.mle <- list(tau = tau.i[indmax])
-  }
-  if (method == 'full sequence') {
-    a_fb.i <- seq(-8, 2, .1)
-    tau.j <- c(seq(.1,.9,.1), seq(1, 30))
-
-    loglik <- sapply(1:length(a_fb.i),
-                     function(i) sapply(1:length(tau.j),
-                                        function(j) ratemodel.loglik(data, list(a_fb = a_fb.i[i], tau = tau.j[j]),
-                                                                     theta.GR, t.shutin, inj = inj)))
-
-    indmax <- which(loglik == max(loglik, na.rm = T), arr.ind = T)
-    theta.mle <- list(a_fb = a_fb.i[indmax[2]], tau = tau.j[indmax[1]])
-  }
-  if(theta.mle$a_fb == -8 | theta.mle$a_fb == 2) print('WARNING: parameter space not fully searched for a_fb')
-  if(theta.mle$tau == .1 | theta.mle$tau == 30) print('WARNING: parameter space not fully searched for tau')
-
-  return(theta.mle)
-}
-
