@@ -317,7 +317,7 @@ negloglik_hist.val <- function(data, par, window = 'full sequence'){
   if(window == 'post-injection'){
     theta <- list(tau = par)
 
-    ind.post <- seism.binned$t > data$ts
+    ind.post <- data$seism.binned$t > data$ts
     res <- rseismTLS::model_rate.val('post-injection',
                                      list(tau = theta$tau), shutin = list(t = data$ts, rate = data$lambda0),
                                      t.postinj = data$seism.binned$t[ind.post])
