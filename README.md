@@ -1,7 +1,7 @@
 ---
 title: "rseismTLS"
 author: "Arnaud Mignan"
-date: "2019-12-05"
+date: "2019-12-06"
 output:
   html_document:
     toc: true
@@ -199,7 +199,7 @@ rate_inj.pred <- rseismTLS::model_rate.val('injection',
                                              inj = inj.binned)
 
 rate_postinj.pred <- rseismTLS::model_rate.val('post-injection',
-                                               list(tau = par.MLE$tau, b = par.MLE$b, mc = mc),
+                                               list(tau = par.MLE$tau),
                                                shutin = list(t = t.shutin, 
                                                              rate = seism.binned$rate[ind.post[1] - 1]),
                                                t.postinj = seism.binned$t[ind.post])
@@ -255,7 +255,7 @@ rate_inj.pred <- rseismTLS::model_rate.val('injection',
                                              inj = inj.binned)
 
 rate_postinj.pred <- rseismTLS::model_rate.val('post-injection',
-                                               list(tau = par_post.MLE$tau, b = par_post.MLE$b, mc = mc),
+                                               list(tau = par_post.MLE$tau),
                                                shutin = list(t = t.shutin, 
                                                              rate = seism.binned$rate[ind.post[1] - 1]),
                                                t.postinj = seism.binned$t[ind.post])
@@ -271,13 +271,44 @@ abline(v = c(t.start, t.shutin), col = 'red', lty = 'dotted')
 
 #### NB: when the earthquake count data is available instead of an earthquake catalogue
 
-In the case in which only the seismicity rate `seism.binned` is available (e.g, catalogue not available but histogram data digitizable from a published figure), the model parameters can still be estimated. Then the Poisson log-likelihood function `negloglik_hist.val()` is used instead of `negloglik_point.val()`, assuming a Non-Homogeneous Poisson Process (NHPP). It is computed and the model parameters optimized in `model_par.mle_hist()`:
+In the case in which only the seismicity rate `seism.binned` is available (e.g, catalogue not available but histogram data digitizable from a published figure), the model parameters can still be estimated. Then the Poisson log-likelihood function `negloglik_hist.val()` is used instead of `negloglik_point.val()`, assuming a Non-Homogeneous Poisson Process (NHPP). It is computed, and the model parameters optimized, in `model_par.mle_hist()`:
 
 
 ```r
 # MLE values based on binned data
-NULL
-#> NULL
+data <- list(seism.binned = seism.binned, inj.binned = inj.binned, b = b.Aki, m0 = mc, ts = t.shutin)
+( par.MLE <- rseismTLS::model_par.mle_hist(data) )
+#> $a_fb
+#> [1] 0.08788649
+#> 
+#> $tau
+#> [1] 1.104109
+#> 
+#> $nLL
+#> [1] 156.6454
+
+data_inj <- list(seism.binned = subset(seism.binned, t <= t.shutin), inj.binned = inj.binned, b = b.Aki, m0 = mc)
+( par_inj.MLE <- rseismTLS::model_par.mle_hist(data_inj, window = 'injection') )
+#> $a_fb
+#> [1] 0.08229297
+#> 
+#> $tau
+#> [1] NA
+#> 
+#> $nLL
+#> [1] 98.59394
+
+data_post <- list(seism.binned = subset(seism.binned, t > t.shutin), ts = t.shutin,
+                  lambda0 = tail(seism.binned$rate[seism.binned$t <= t.shutin], 1))
+( par_post.MLE <- rseismTLS::model_par.mle_hist(data_post, window = 'post-injection') )
+#> $a_fb
+#> [1] NA
+#> 
+#> $tau
+#> [1] 0.9159418
+#> 
+#> $nLL
+#> [1] 60.03801
 ```
 
 
