@@ -181,11 +181,11 @@ data.bin <- function(seism, inj, tint) {
 #' normalized by the injected volume (e.g., Dinske and Shapiro, 2013).
 #'
 #' This is equivalent to Shapiro's Seismogenic Index (e.g., Dinske and Shapiro, 2013)
-#' \out{<i>SI = log<sub>10</sub>(N<sub>tot</sub> / V<sub>tot</sub>) + b * m<sub>c</sub></i>}
+#' \out{<i>SI = log<sub>10</sub>(N<sub>tot</sub> / V<sub>tot</sub>) + b * m<sub>0</sub></i>}
 #' but here theoretically agnostic, following the notation of Mignan et al. (2017).
 #'
-#' @param Ntot total number of events above `mc` for `Vtot`
-#' @param mc the completeness magnitude
+#' @param Ntot total number of events above `m0` for `Vtot`
+#' @param m0 minimum magnitude threshold
 #' @param b the slope of the Gutenberg-Richter law
 #' @param Vtot total volume of fluids injected
 #' @return The numeric value of the underground feedback activation
@@ -198,8 +198,8 @@ data.bin <- function(seism, inj, tint) {
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
-a_fb.val <- function(Ntot, b, mc, Vtot) {
-  log10(Ntot / Vtot) + b * mc
+a_fb.val <- function(Ntot, b, m0, Vtot) {
+  log10(Ntot / Vtot) + b * m0
 }
 
 #' Statistical model of induced seismicity
@@ -220,7 +220,7 @@ a_fb.val <- function(Ntot, b, mc, Vtot) {
 #' * `a_fb` the underground feedback activation (`NULL` for "`post-injection`")
 #' * `tau` the mean relaxation time (`NULL` for "`injection`")
 #' * `b` the slope of the Gutenberg-Richter law
-#' * `mc` the completeness magnitude
+#' * `m0` the minimum magnitude threshold
 #' @param inj the binned injection profile data frame with parameters
 #' * `t` the occurrence time (in decimal days)
 #' * `dV` the flow rate (in cubic metres per bin)
@@ -247,9 +247,9 @@ model_rate.val <- function(window, theta, inj = NULL, shutin = NULL, t.postinj =
     stop("window not found. Use 'injection', 'post-injection', or 'full sequence'")
   if (window == 'injection') {
     if(is.null(inj)) stop('injection profile missing')
-    if(is.null(theta$a_fb) | is.null(theta$b) | is.null(theta$mc))
-      stop('parameters a_fb, b and/or mc missing in theta')
-    rate <- 10 ^ theta$a_fb * 10 ^ (-theta$b * theta$mc) * inj$dV
+    if(is.null(theta$a_fb) | is.null(theta$b) | is.null(theta$m0))
+      stop('parameters a_fb, b and/or m0 missing in theta')
+    rate <- 10 ^ theta$a_fb * 10 ^ (-theta$b * theta$m0) * inj$dV
     t <- inj$t
   }
   if (window == 'post-injection') {
@@ -261,11 +261,11 @@ model_rate.val <- function(window, theta, inj = NULL, shutin = NULL, t.postinj =
   }
   if (window == 'full sequence') {
     if(is.null(inj)) stop('injection profile required')
-    if(is.null(theta$a_fb) | is.null(theta$b) | is.null(theta$mc) | is.null(theta$tau))
-      stop('parameters a_fb, tau, b and mc required in theta')
+    if(is.null(theta$a_fb) | is.null(theta$b) | is.null(theta$m0) | is.null(theta$tau))
+      stop('parameters a_fb, tau, b and m0 required in theta')
     if(is.null(shutin)) stop('shutin data missing')
     if(is.null(t.postinj)) stop('t.postinj time vector missing')
-    rate.stimul <-  10 ^ theta$a_fb * 10 ^ (-theta$b * theta$mc) * inj$dV
+    rate.stimul <-  10 ^ theta$a_fb * 10 ^ (-theta$b * theta$m0) * inj$dV
     rate.relax <- rate.stimul[length(rate.stimul)] * exp(-(t.postinj - shutin$t) / theta$tau)
     rate <- c(rate.stimul, rate.relax)
     t <- c(inj$t, t.postinj)
@@ -306,7 +306,7 @@ negloglik_hist.val <- function(data, par, window = 'full sequence'){
 
     ind.post <- which(data$seism.binned$t > tail(data$inj.binned$t, 1))
     res <- rseismTLS::model_rate.val('full sequence',
-                                     list(a_fb = theta$a_fb, tau = theta$tau, b = data$b, mc = data$m0),
+                                     list(a_fb = theta$a_fb, tau = theta$tau, b = data$b, m0 = data$m0),
                                      inj = data$inj.binned, shutin = list(t = data$ts),
                                      t.postinj = data$seism.binned$t[ind.post])
   }
@@ -314,7 +314,7 @@ negloglik_hist.val <- function(data, par, window = 'full sequence'){
     theta <- list(a_fb = par)
 
     res <- rseismTLS::model_rate.val('injection',
-                                     list(a_fb = theta$a_fb, b = data$b, mc = data$m0), inj = data$inj.binned)
+                                     list(a_fb = theta$a_fb, b = data$b, m0 = data$m0), inj = data$inj.binned)
   }
   if(window == 'post-injection'){
     theta <- list(tau = par)
