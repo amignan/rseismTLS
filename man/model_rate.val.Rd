@@ -15,7 +15,7 @@ model_rate.val(window, theta, inj = NULL, shutin = NULL,
 \item \code{a_fb} the underground feedback activation (\code{NULL} for "\code{post-injection}")
 \item \code{tau} the mean relaxation time (\code{NULL} for "\code{injection}")
 \item \code{b} the slope of the Gutenberg-Richter law
-\item \code{mc} the completeness magnitude
+\item \code{m0} the minimum magnitude threshold
 }}
 
 \item{inj}{the binned injection profile data frame with parameters

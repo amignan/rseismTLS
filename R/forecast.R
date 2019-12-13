@@ -381,3 +381,114 @@ model_par.mle_hist <- function(data, theta.init = list(a_fb = -1, tau = 1), wind
 
   return(list(a_fb = a_fb, tau = tau, nLL = res$value))
 }
+
+#' Time transformation
+#'
+#' Transformation of earthquake occurrence times following the Ogata (1988) method based on the integration of the
+#' induced seismicity model of `model_rate.val()`, to then be used as input in `stat.KS_uniform()`.
+#'
+#' See examples of induced seismicity applications in Mignan et al. (2017, 2019) and Broccardo et al. (2017).
+#'
+#' @param data a list containing all the necessary point data:
+#' * `seism` an earthquake catalogue data frame of parameters `t` (time in days) and `m` (magnitude)
+#' * `inj` matching injection profile data frame of parameters `t` (time in days), `dV` (flow rate in cubic
+#' metre/day) and `V` (cumulative injected volume in cubic metres)
+#' * `m0` the minimum magnitude cutoff of the earthquake catalogue
+#' * `ts` shut-in time (in days)
+#' @param theta the list of fitted model parameters:
+#' * `a_fb` the underground feedback activation
+#' * `tau` the mean relaxation time
+#' * `b` the slope of the Gutenberg-Richter law
+#' @return the transformed time vector
+#' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
+#' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
+#' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2019), Autonomous Decision-Making Against Induced
+#' Seismicity in Deep Fluid Injections. In: Ferrari A., Laloui L. (eds), Energy Geotechnics, SEG 2018, Springer
+#' Series in Geomechanics and Geoengineering, 369-376,
+#' \href{https://link.springer.com/chapter/10.1007/978-3-319-99670-7_46}{doi: 10.1007/978-3-319-99670-7_46}
+#' @references Ogata Y. (1988), Statistical Models for Earthquake Occurrences and Residual Analysis for Point
+#' Processes. J. Am. Stat. Assoc.,
+#' \href{https://amstat.tandfonline.com/doi/abs/10.1080/01621459.1988.10478560#.XfJUpZNKjOQ}{83 (401), 9-27}
+#' @seealso \code{stat.KS_uniform}, \code{model_rate.val}
+t.transform <- function(data, theta) {
+  require(caTools)	 # trapz()
+  require(signal)	 # interp1()
+
+  N <- nrow(data$seism)
+  t.transf <- numeric(N)
+
+  indinj <- which(data$seism$t <= data$ts)
+  inj_atEvent <- data.frame(t = data$seism$t[indinj], dV = interp1(data$inj$t, data$inj$dV, data$seism$t[indinj]))
+  rate.pred_atEvent <- rseismTLS::model_rate.val('full sequence',
+                                                 list(a_fb = theta$a_fb, tau = theta$tau, b = theta$b, m0 = data$m0),
+                                                 inj = inj_atEvent, shutin = list(t = data$ts),
+                                                 t.postinj = data$seism$t[-indinj])
+
+  rate.pred_atEvent <- rbind(data.frame(t = 0, rate = 0), rate.pred_atEvent)
+  for(i in 2:(N+1)) t.transf[i-1] <- trapz(rate.pred_atEvent$t[1:i], rate.pred_atEvent$rate[1:i])
+  return(t.transf)
+}
+
+#' Kolmogorov-Smirnov Goodness of Fit Test (uniform)
+#'
+#' Kolmogorov-Smirnov Goodness of Fit Test (K-S test) to quantify the level of performance of the model
+#' `model_rate.val()` and to potentially make a residual analysis (e.g., Ogata, 1988). The test is made
+#' assuming a uniform distribution (i.e. distribution of a stationary Poisson process of intensity 1) for the
+#' time transformed in `t.transform()` for the induced seismicity model.
+#'
+#' See examples of induced seismicity applications in Mignan et al. (2017, 2019) and Broccardo et al. (2017).
+#'
+#' @param t.transf a vector of transformed times
+#' @return the results of the K-S test as a data frame:
+#' * `t` the sequence of N events, from 1 to N
+#' * `lim95up` the upper 95% K-S confidence limit
+#' * `lim95down` the lower 95% K-S confidence limit
+#' * `lim99up` the upper 99% K-S confidence limit
+#' * `lim99down` the lower 99% K-S confidence limit
+#' * `boolean95` logical vector, true if events are with the 95% K-S confidence interval
+#' * `boolean99` logical vector, true if events are with the 99% K-S confidence interval
+#' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
+#' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
+#' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2019), Autonomous Decision-Making Against Induced
+#' Seismicity in Deep Fluid Injections. In: Ferrari A., Laloui L. (eds), Energy Geotechnics, SEG 2018, Springer
+#' Series in Geomechanics and Geoengineering, 369-376,
+#' \href{https://link.springer.com/chapter/10.1007/978-3-319-99670-7_46}{doi: 10.1007/978-3-319-99670-7_46}
+#' @references Ogata Y. (1988), Statistical Models for Earthquake Occurrences and Residual Analysis for Point
+#' Processes. J. Am. Stat. Assoc.,
+#' \href{https://amstat.tandfonline.com/doi/abs/10.1080/01621459.1988.10478560#.XfJUpZNKjOQ}{83 (401), 9-27}
+#' @seealso \code{t.transform}, \code{model_rate.val}
+stat.KS_uniform <- function(t.transf) {
+  Yn <- diff(c(0, t.transf))
+  Un <- 1 - exp(-Yn)
+  Un_sort <- sort(Un)
+
+  N <- length(t.transf)
+  ti <- seq(N)
+  Fx_u <- ti / N
+  #95% for cum number of events
+  bound_left_95 <- Fx_u - 2 / sqrt(N) * sqrt(Fx_u * (1 - Fx_u))
+  bound_right_95 <- Fx_u + 2 / sqrt(N) * sqrt(Fx_u * (1 - Fx_u))
+  d_KS_95 <- 1.358 / sqrt(N)
+  #99% for cum number of events
+  bound_left_99 <- Fx_u - 3 / sqrt(N) * sqrt(Fx_u * (1 - Fx_u))
+  bound_right_99 <- Fx_u + 3 / sqrt(N) * sqrt(Fx_u * (1 - Fx_u))
+  d_KS_99 <- 1.628 / sqrt(N)
+
+  boolean95 <- seq(N) >= N * (t.transf / N - d_KS_95) & seq(N) <= N * (t.transf / N + d_KS_95)
+  boolean99 <- seq(N) >= N * (t.transf / N - d_KS_99) & seq(N) <= N * (t.transf / N + d_KS_99)
+  return(data.frame(t = ti,
+                    lim95up = N * (Fx_u + d_KS_95),
+                    lim95down = N * (Fx_u - d_KS_95),
+                    lim99up = N * (Fx_u + d_KS_99),
+                    lim99down = N * (Fx_u - d_KS_99),
+                    boolean95 = boolean95,
+                    boolean99 = boolean99))
+}

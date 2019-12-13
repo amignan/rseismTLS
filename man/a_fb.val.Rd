@@ -4,14 +4,14 @@
 \alias{a_fb.val}
 \title{Underground feedback activation}
 \usage{
-a_fb.val(Ntot, b, mc, Vtot)
+a_fb.val(Ntot, b, m0, Vtot)
 }
 \arguments{
-\item{Ntot}{total number of events above \code{mc} for \code{Vtot}}
+\item{Ntot}{total number of events above \code{m0} for \code{Vtot}}
 
 \item{b}{the slope of the Gutenberg-Richter law}
 
-\item{mc}{the completeness magnitude}
+\item{m0}{minimum magnitude threshold}
 
 \item{Vtot}{total volume of fluids injected}
 }
@@ -25,7 +25,7 @@ normalized by the injected volume (e.g., Dinske and Shapiro, 2013).
 }
 \details{
 This is equivalent to Shapiro's Seismogenic Index (e.g., Dinske and Shapiro, 2013)
-\out{<i>SI = log<sub>10</sub>(N<sub>tot</sub> / V<sub>tot</sub>) + b * m<sub>c</sub></i>}
+\out{<i>SI = log<sub>10</sub>(N<sub>tot</sub> / V<sub>tot</sub>) + b * m<sub>0</sub></i>}
 but here theoretically agnostic, following the notation of Mignan et al. (2017).
 }
 \references{

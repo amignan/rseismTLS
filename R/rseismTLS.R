@@ -7,7 +7,9 @@
 #' @section data
 #' "Basel2006_inj", "Basel2006_seism"
 #' @section rseismTLS forecast functions:
-#' negloglik_point.val, model_par.mle_point, a_fb.val, data.bin, model_rate.val, negloglik_hist.val, model_par.mle_hist
+#' negloglik_point.val, model_par.mle_point, a_fb.val,
+#' data.bin, model_rate.val, negloglik_hist.val, model_par.mle_hist,
+#' t.transform, stat.KS_uniform
 #' @section rseismNet risk functions: N/A
 #'
 #' @docType package
