@@ -37,3 +37,20 @@
 #' @seealso \code{Basel2006_inj}
 "Basel2006_seism_simulated"
 
+#' Induced seismicity model parameter list
+#'
+#' List of parameters `b`, `a_fb`, `tau` and `mc` estimaed for different stimulation `sites`, as given in
+#' Mignan et al. (2017).
+#' @format A table with the following columns:
+#' \describe{
+#'   \item{site}{stimulate site}
+#'   \item{mc}{completeness magnitude}
+#'   \item{b}{slope of the Gutenberg-Richter law}
+#'   \item{a_fb}{underground feedback activation (in m^-3)}
+#'   \item{tau}{mean relaxation time (in days)}
+#' }
+#' @source \url{https://www.nature.com/articles/s41598-017-13585-9}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+"par_Mignan_etal_SciRep2017.dat"
