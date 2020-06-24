@@ -30,7 +30,7 @@ A list of 2 data frames binned in time:
 }
 }
 \description{
-Bucketize the two main data sets (injection \code{inj} and seismicity \code{seism}) in time intervals \code{tint}.
+Bucketizes the two main data sets (injection \code{inj} and seismicity \code{seism}) in time intervals \code{tint}.
 }
 \details{
 Time \code{t} represents the centre of each bin of the time intervals \code{tint}.

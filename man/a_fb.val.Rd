@@ -19,7 +19,7 @@ a_fb.val(Ntot, b, m0, Vtot)
 The numeric value of the underground feedback activation
 }
 \description{
-Estimate the underground feedback activation \out{<i>a<sub>fb</sub></i>}, which is the
+Estimates the underground feedback activation \out{<i>a<sub>fb</sub></i>}, which is the
 \out{<i>a</i>}-value of the Gutenberg-Richter law (Gutenberg and Richter, 1944)
 normalized by the injected volume (e.g., Dinske and Shapiro, 2013).
 }

@@ -4,11 +4,10 @@
 \alias{model_rate.val}
 \title{Statistical model of induced seismicity}
 \usage{
-model_rate.val(window, theta, inj = NULL, shutin = NULL,
-  t.postinj = NULL)
+model_rate.val(window, theta, inj = NULL, shutin = NULL, t.postinj = NULL)
 }
 \arguments{
-\item{window}{the window to be used: "\code{injection}", "\code{post-injection}", or "\code{full sequence}"}
+\item{window}{the window to be used: "\code{injection}", "\code{post-injection}", or "\verb{full sequence}"}
 
 \item{theta}{the list of model parameters:
 \itemize{
@@ -26,7 +25,7 @@ model_rate.val(window, theta, inj = NULL, shutin = NULL,
 
 \item{shutin}{the list of shut-in parameters
 \itemize{
-\item \code{t} the shut-in time (in decimal days) (required for "\code{full sequence}" and "\code{post-injection}")
+\item \code{t} the shut-in time (in decimal days) (required for "\verb{full sequence}" and "\code{post-injection}")
 \item \code{rate} the rate of induced seismicity at shut-in (required for "\code{post-injection}")
 }}
 

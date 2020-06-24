@@ -4,8 +4,11 @@
 \alias{model_par.mle_hist}
 \title{Model Parameter Maximum Likelihood Estimation (Histogram Data)}
 \usage{
-model_par.mle_hist(data, theta.init = list(a_fb = -1, tau = 1),
-  window = "full sequence")
+model_par.mle_hist(
+  data,
+  theta.init = list(a_fb = -1, tau = 1),
+  window = "full sequence"
+)
 }
 \arguments{
 \item{data}{a list containing all the necessary histogram data:
@@ -25,7 +28,7 @@ metre/time bin) and \code{V} (cumulative injected volume in cubic metres)
 \item \code{tau} the mean relaxation time (in days)
 }}
 
-\item{window}{the window to be used: "\code{injection}", "\code{post-injection}", or "\code{full sequence}"}
+\item{window}{the window to be used: "\code{injection}", "\code{post-injection}", or "\verb{full sequence}"}
 }
 \value{
 a list of the parameters' MLEs:

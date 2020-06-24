@@ -13,12 +13,12 @@ stat.KS_uniform(t.transf)
 the results of the K-S test as a data frame:
 \itemize{
 \item \code{t} the sequence of N events, from 1 to N
-\item \code{lim95up} the upper 95% K-S confidence limit
-\item \code{lim95down} the lower 95% K-S confidence limit
-\item \code{lim99up} the upper 99% K-S confidence limit
-\item \code{lim99down} the lower 99% K-S confidence limit
-\item \code{boolean95} logical vector, true if events are with the 95% K-S confidence interval
-\item \code{boolean99} logical vector, true if events are with the 99% K-S confidence interval
+\item \code{lim95up} the upper 95\% K-S confidence limit
+\item \code{lim95down} the lower 95\% K-S confidence limit
+\item \code{lim99up} the upper 99\% K-S confidence limit
+\item \code{lim99down} the lower 99\% K-S confidence limit
+\item \code{boolean95} logical vector, true if events are with the 95\% K-S confidence interval
+\item \code{boolean99} logical vector, true if events are with the 99\% K-S confidence interval
 }
 }
 \description{

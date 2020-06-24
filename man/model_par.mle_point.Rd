@@ -4,8 +4,11 @@
 \alias{model_par.mle_point}
 \title{Model Parameter Maximum Likelihood Estimation (Point Data)}
 \usage{
-model_par.mle_point(data, theta.init = list(a_fb = -1, tau = 1, b = 1),
-  window = "full sequence")
+model_par.mle_point(
+  data,
+  theta.init = list(a_fb = -1, tau = 1, b = 1),
+  window = "full sequence"
+)
 }
 \arguments{
 \item{data}{a list containing all the necessary point data:
@@ -26,7 +29,7 @@ metre/day) and \code{V} (cumulative injected volume in cubic metres)
 \item \code{b} the slope of the Gutenberg-Richter law
 }}
 
-\item{window}{the window to be used: "\code{injection}", "\code{post-injection}", or "\code{full sequence}"}
+\item{window}{the window to be used: "\code{injection}", "\code{post-injection}", or "\verb{full sequence}"}
 }
 \value{
 a list of the parameters' MLEs:

@@ -3,13 +3,15 @@
 \docType{data}
 \name{Basel2006_inj}
 \alias{Basel2006_inj}
-\title{2006 Basel EGS injection profile.}
-\format{A data frame with 9310 rows and 3 variables:
+\title{2006 Basel EGS injection profile}
+\format{
+A data frame with 9310 rows and 3 variables:
 \describe{
 \item{t}{time (in decimal days) since 2006-12-02 00:00:00.00}
 \item{dV}{volume (in cubic metres) injected in the minute preceding t}
 \item{V}{cumulative volume (in cubic metres) injected up to time t}
-}}
+}
+}
 \source{
 \url{https://www.sciencedirect.com/science/article/pii/S0375650508000382}
 }

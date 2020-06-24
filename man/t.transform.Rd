@@ -27,7 +27,7 @@ metre/day) and \code{V} (cumulative injected volume in cubic metres)
 the transformed time vector
 }
 \description{
-Transformation of earthquake occurrence times following the Ogata (1988) method based on the integration of the
+Transforms earthquake occurrence times following the Ogata (1988) method based on the integration of the
 induced seismicity model of \code{model_rate.val()}, to then be used as input in \code{stat.KS_uniform()}.
 }
 \details{

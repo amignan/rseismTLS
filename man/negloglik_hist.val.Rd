@@ -20,18 +20,18 @@ metre/time bin) and \code{V} (cumulative injected volume in cubic metres)
 
 \item{par}{a vector of the input parameters}
 
-\item{window}{the window to be used: "\code{injection}", "\code{post-injection}", or "\code{full sequence}"}
+\item{window}{the window to be used: "\code{injection}", "\code{post-injection}", or "\verb{full sequence}"}
 }
 \value{
 the negative log likelihood estimate for the specified \code{par} values
 }
 \description{
-Estimate the negative log likelihood of the Non-Homogeneous Poisson Process (NHPP) derived from the statistical
+Estimates the negative log likelihood of the Non-Homogeneous Poisson Process (NHPP) derived from the statistical
 model of Mignan et al. (2017) for histogram data and a specific set of input parameters, for three possible time
 windows (full sequence, injection phase or post-injection phase).
 }
 \details{
-Note that the function is here structured for the parameters to be optimized by \code{optim()``, which is done automatically in }model_par.mle_hist()\code{. The }par\code{vector depends on the selected}window\code{, which is dealt with in }model_par.mle_hist()` (see Details section there).
+Note that the function is here structured for the parameters to be optimized by \verb{optim()``, which is done automatically in }model_par.mle_hist()\verb{. The }par\verb{vector depends on the selected}window\verb{, which is dealt with in }model_par.mle_hist()` (see Details section there).
 }
 \references{
 Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
