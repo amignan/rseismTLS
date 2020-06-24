@@ -270,7 +270,31 @@ image(prior$ai, prior$taui, joint_prior$a_tau.prior)
 
 #### Posterior distribution estimation
 
+The Bayesian framework enables the computation of posterior distribution for the model’s parameters, It first requies the computation of the log likelihood distribution by using `loglik_point.array()`. The posterior distributions are then obtained via `model_posterior.distr()`.
 
+```{r}
+data <- list(seism = seism, inj = inj, m0 = mc, ts = t.shutin, Tmax = 12)
+
+# compute log likelihood distribution 
+LL <- rseismTLS::loglik_point.array(data, prior)
+
+# compute posterior distribution
+posterior <- rseismTLS::model_posterior.distr(prior, joint_prior, LL)
+
+par(mfrow = c(1,3))
+plot(prior$ai, posterior$a.post, type = 'l')
+plot(prior$bi, posterior$b.post, type = 'l')
+plot(prior$taui, posterior$tau.post, type = 'l')
+```
+
+Similarly, we can plot the joint posterior distributions:
+
+```{r}
+par(mfrow = c(1,3))
+image(prior$bi, prior$ai, posterior$b_a.post, xlim = c(1.4, 1.8), ylim = c(-.1, .3))
+image(prior$bi, prior$taui, posterior$b_tau.post, xlim = c(1.4, 1.8), ylim = c(.8, 1.4))
+image(prior$ai, prior$taui, posterior$a_tau.post, xlim = c(-.1, .3), ylim = c(.8, 1.4))
+```
 
 
 TO BE CONTINUED.
