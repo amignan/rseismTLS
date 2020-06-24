@@ -17,7 +17,7 @@
 #' * `ts` shut-in time (in days) (not required for "`injection`")
 #' * `Tmax` upper range of the time window (in days) (not required for "`injection`")
 #' * `lambda0` seismicity rate (per day) at shut-in (only required for "`post-injection`")
-#' @param par a vector of the input parameters
+#' @param par a vector of the input parameters `a_fb`, `tau`, and `b` (in this order)
 #' @param window the window to be used: "`injection`", "`post-injection`", or "`full sequence`"
 #' @return the negative log likelihood estimate for the specified `par` values
 #' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
@@ -26,7 +26,7 @@
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
-#' @seealso \code{model_par.mle_point}, \code{model_par.mle_hist}, \code{negloglik_hist.val}
+#' @seealso \code{model_par.mle_point}, \code{model_par.mle_hist}, \code{negloglik_hist.val}, \code{loglik_point.array}
 negloglik_point.val <- function(data, par, window = 'full sequence'){
   if(window == 'full sequence'){
     theta <- list(a_fb = par[1], tau = par[2], b = par[3])
@@ -602,3 +602,64 @@ model_joint_prior.distr <- function(prior) {
 
   return(list(b_a.prior = b_a.prior, b_tau.prior = b_tau.prior, a_tau.prior = a_tau.prior, joint.prior_norm = joint.prior_norm))
 }
+
+#' Log Likelihood Distribution (Point Data)
+#'
+#' Estimates the log likelihood distribution of the statistical model of Mignan et al. (2017) for
+#' a specific set of input parameters. Function similar to `negloglik_point.val()` but for 3 vectors of input
+#' parameters instead of 3 parameter values.
+#'
+#' See Eq. A2 of Broccardo et al. (2017) for details. Used for the hierarchical Bayesian modelling.
+#'
+#' @param data a list containing all the necessary point data:
+#' * `seism` an earthquake catalogue data frame of parameters `t` (time in days) and `m` (magnitude)
+#' * `inj` matching injection profile data frame of parameters `t` (time in days), `dV` (flow rate in cubic
+#' metre/day) and `V` (cumulative injected volume in cubic metres)
+#' * `m0` the minimum magnitude cutoff of the earthquake catalogue
+#' * `ts` shut-in time (in days) (not required for "`injection`")
+#' * `Tmax` upper range of the time window (in days) (not required for "`injection`")
+#' @param par.space an array of the input parameters
+#' @return the log likelihood distribution for the specified `par.space` array
+#' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
+#' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
+#' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' @seealso \code{negloglik_point.val}
+loglik_point.array <- function(data, par.space) {
+  n.a <- length(par.space$ai); n.b <- length(par.space$bi); n.tau <- length(par.space$taui)
+  LL <- array(NA, c(n.a, n.tau, n.b))
+
+  N <- nrow(data$seism)
+  seism.inj <- subset(data$seism, data$seism$t <= data$ts)
+  seism.post <- subset(data$seism, data$seism$t > data$ts)
+  Ninj <- nrow(seism.inj)
+  Npost <- nrow(seism.post)
+  dV <- interp1(data$inj$t, data$inj$dV, seism.inj$t)
+  dV[dV <= 0] <- NA       #avoid -Inf for log(dV) - model applies to positive dV only
+  dV.ts <- tail(dV, 1)
+  V.ts <- tail(data$inj$V, 1)
+
+  # components of length 1 or n.b
+  C2 <- sum(log(dV), na.rm = T)
+  C3 <- Npost * log(dV.ts)
+  C6 <- N * log(par.space$bi)
+  C7 <- N * log(log(10))
+  C8 <- -par.space$bi * log(10) * sum(data$seism$m)
+  C9 <- N  * par.space$bi * log(10) * (data$m0 - mbin/2)   # Mmax -> +Inf
+
+  # other components as matrix [n.a, n.tau] for efficient computation
+  Ai <- matrix(rep(par.space$ai, n.tau), nrow = n.a, ncol = n.tau)
+  Taui <- matrix(rep(par.space$taui, each = n.a), nrow = n.a, ncol = n.tau)
+  C4 <- -1 / Taui * (sum(seism.post$t - data$ts))
+  for(i in 1:n.b){
+    C1 <- N * (Ai - par.space$bi[i] * data$m0) / log10(exp(1))
+    C5 <- -10^(Ai - par.space$bi[i] * data$m0) * (V.ts + dV.ts * Taui * (1-exp(-(data$Tmax - data$ts) / Taui)))
+
+    LL[,,i] <- C1 + C2 + C3 + C4 + C5 + C6[i] + C7 + C8[i] + C9[i]
+  }
+  return(LL)
+}
+
+
