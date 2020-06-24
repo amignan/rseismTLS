@@ -1,6 +1,6 @@
 #' Negative Log Likelihood Function (Point Data)
 #'
-#' Estimate the negative log likelihood of the statistical model of Mignan et al. (2017) for
+#' Estimates the negative log likelihood of the statistical model of Mignan et al. (2017) for
 #' a specific set of input parameters, for three possible time windows (full sequence, injection phase or
 #' post-injection phase).
 #'
@@ -146,7 +146,7 @@ model_par.mle_point <- function(data, theta.init = list(a_fb = -1, tau = 1, b = 
 
 #' Data Binning
 #'
-#' Bucketize the two main data sets (injection `inj` and seismicity `seism`) in time intervals `tint`.
+#' Bucketizes the two main data sets (injection `inj` and seismicity `seism`) in time intervals `tint`.
 #'
 #' Time `t` represents the centre of each bin of the time intervals `tint`.
 #'
@@ -176,7 +176,7 @@ data.bin <- function(seism, inj, tint) {
 
 #' Underground feedback activation
 #'
-#' Estimate the underground feedback activation \out{<i>a<sub>fb</sub></i>}, which is the
+#' Estimates the underground feedback activation \out{<i>a<sub>fb</sub></i>}, which is the
 #' \out{<i>a</i>}-value of the Gutenberg-Richter law (Gutenberg and Richter, 1944)
 #' normalized by the injected volume (e.g., Dinske and Shapiro, 2013).
 #'
@@ -275,7 +275,7 @@ model_rate.val <- function(window, theta, inj = NULL, shutin = NULL, t.postinj =
 
 #' Negative Log Likelihood Function (Histogram Data)
 #'
-#' Estimate the negative log likelihood of the Non-Homogeneous Poisson Process (NHPP) derived from the statistical
+#' Estimates the negative log likelihood of the Non-Homogeneous Poisson Process (NHPP) derived from the statistical
 #' model of Mignan et al. (2017) for histogram data and a specific set of input parameters, for three possible time
 #' windows (full sequence, injection phase or post-injection phase).
 #'
@@ -384,7 +384,7 @@ model_par.mle_hist <- function(data, theta.init = list(a_fb = -1, tau = 1), wind
 
 #' Time transformation
 #'
-#' Transformation of earthquake occurrence times following the Ogata (1988) method based on the integration of the
+#' Transforms earthquake occurrence times following the Ogata (1988) method based on the integration of the
 #' induced seismicity model of `model_rate.val()`, to then be used as input in `stat.KS_uniform()`.
 #'
 #' See examples of induced seismicity applications in Mignan et al. (2017, 2019) and Broccardo et al. (2017).
@@ -491,4 +491,63 @@ stat.KS_uniform <- function(t.transf) {
                     lim99down = N * (Fx_u - d_KS_99),
                     boolean95 = boolean95,
                     boolean99 = boolean99))
+}
+
+#' Prior distribution evaluation
+#'
+#' Estimates the prior distributions of the 3 parameters of the induced seismicity model of
+#' Mignan et al. (2017) `model_rate.val()`.
+#'
+#' The priors of `b` and `a_fb` are defined as Beta distributions while the prior of `tau` is defined as a
+#' Gamma distribution. Read Broccardo et al. (2017) for details. The `par` file of Mignan et al. (2017)
+#' (`par_Mignan_etal_SciRep2017.dat`) is provided as standard input. The proposed `bi`, `ai` and `taui` increments
+#' are based on the ranges given in that file.
+#'
+#' @param par a data frame of model parameters fitted from past stimulations
+#' * `b` the slope of the Gutenberg-Richter law
+#' * `a_fb` the underground feedback activation (in m^-3)
+#' * `tau` the mean relaxation time (in days)
+#' @return the list of the prior distribution for each of the 3 model parameters:
+#' * `bi` the vector of `b` increments
+#' * `b.prior` the prior Beta distribution of `b`
+#' * `ai` the vector of `a_fb` increments
+#' * `a.prior` the prior Beta distribution of `a_fb`
+#' * `taui` the vector of `tau` increments
+#' * `tau.prior` the prior Gamma distribution of `tau`
+#' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
+#' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
+#' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' @seealso \code{model_rate.val}, \code{par_Mignan_etal_SciRep2017.dat}
+model_prior.distr <- function(par, ai = seq(-5,1,.01), bi = seq(.5,2.,.01), taui = seq(.1,15,.05)) {
+  require(MASS)    # fitdistr()
+
+  n.a <- length(ai); n.b <- length(bi); n.tau <- length(taui)
+
+  # b prior
+  b0.norm <- (par$b - min(bi)) / (max(bi) - min(bi))
+  b0.mu <- mean(b0.norm)
+  b0.var <- var(b0.norm)
+  b.alpha <- ((1 - b0.mu) / b0.var - 1 / b0.mu) * b0.mu ^ 2
+  b.beta <- b.alpha * (1 / b0.mu - 1)
+  b.prior <- dbeta( (bi - min(bi)) / (max(bi) - min(bi)), b.alpha, b.beta ) / (max(bi) - min(bi))
+
+  # a prior
+  a0.norm <- (par$a_fb - min(ai)) / (max(ai) - min(ai))
+  a0.mu <- mean(a0.norm)
+  a0.var <- var(a0.norm)
+  a.alpha <- ((1 - a0.mu) / a0.var - 1 / a0.mu) * a0.mu ^ 2
+  a.beta <- a.alpha * (1 / a0.mu - 1)
+  a.prior <- dbeta( (ai - min(ai)) / (max(ai) - min(ai)), a.alpha, a.beta ) / (max(ai) - min(ai))
+
+  # tau prior
+  tau.par <- fitdistr(par$tau, 'Gamma')
+  tau.shape <- tau.par$estimate[1]
+  tau.rate <- tau.par$estimate[2]
+  tau.prior <- dgamma(taui, tau.shape, tau.rate)
+
+  prior <- list(ai = ai, a.prior = a.prior, bi = bi, b.prior = b.prior, taui = taui, tau.prior = tau.prior)
+  return(prior)
 }
