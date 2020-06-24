@@ -493,10 +493,10 @@ stat.KS_uniform <- function(t.transf) {
                     boolean99 = boolean99))
 }
 
-#' Prior distribution evaluation
+#' Prior distribution estimation
 #'
 #' Estimates the prior distributions of the 3 parameters of the induced seismicity model of
-#' Mignan et al. (2017) `model_rate.val()`.
+#' Mignan et al. (2017), `model_rate.val()`.
 #'
 #' The priors of `b` and `a_fb` are defined as Beta distributions while the prior of `tau` is defined as a
 #' Gamma distribution. Read Broccardo et al. (2017) for details. The `par` file of Mignan et al. (2017)
@@ -507,7 +507,7 @@ stat.KS_uniform <- function(t.transf) {
 #' * `b` the slope of the Gutenberg-Richter law
 #' * `a_fb` the underground feedback activation (in m^-3)
 #' * `tau` the mean relaxation time (in days)
-#' @return the list of the prior distribution for each of the 3 model parameters:
+#' @return the list of the prior distributions for each of the 3 model parameters:
 #' * `bi` the vector of `b` increments
 #' * `b.prior` the prior Beta distribution of `b`
 #' * `ai` the vector of `a_fb` increments
@@ -520,7 +520,7 @@ stat.KS_uniform <- function(t.transf) {
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
-#' @seealso \code{model_rate.val}, \code{par_Mignan_etal_SciRep2017.dat}
+#' @seealso \code{model_rate.val}, \code{model_joint_prior.distr}, \code{par_Mignan_etal_SciRep2017.dat}
 model_prior.distr <- function(par, ai = seq(-5,1,.01), bi = seq(.5,2.,.01), taui = seq(.1,15,.05)) {
   require(MASS)    # fitdistr()
 
@@ -550,4 +550,55 @@ model_prior.distr <- function(par, ai = seq(-5,1,.01), bi = seq(.5,2.,.01), taui
 
   prior <- list(ai = ai, a.prior = a.prior, bi = bi, b.prior = b.prior, taui = taui, tau.prior = tau.prior)
   return(prior)
+}
+
+#' Joint prior distribution estimation
+#'
+#' Estimates the joint prior distributions related to the 3 parameters of the induced seismicity model of
+#' Mignan et al. (2017), `model_rate.val()`.
+#'
+#' Read Broccardo et al. (2017) for details.
+#'
+#' @param prior a list of the prior distributions computed with `model_prior.distr()`
+#' * `bi` the vector of `b` increments
+#' * `b.prior` the prior Beta distribution of `b`
+#' * `ai` the vector of `a_fb` increments
+#' * `a.prior` the prior Beta distribution of `a_fb`
+#' * `taui` the vector of `tau` increments
+#' * `tau.prior` the prior Gamma distribution of `tau`
+#' @return the list of the joint prior distributions for each of the 3 model parameter combinations:
+#' * `b_a.prior` the vector of the (`b`, `a_fb`) joint distribution
+#' * `b_tau.prior` the vector of the (`b`, `tau`) joint distribution
+#' * `a_tau.prior` the vector of the (`a_fb`, `tau`) joint distribution
+#' * `joint.prior_norm` the 3-dimensional array of the normalized joint prior distribution
+#' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
+#' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
+#' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' @seealso \code{model_rate.val}, \code{model_prior.distr}, \code{par_Mignan_etal_SciRep2017.dat}
+model_joint_prior.distr <- function(prior) {
+  n.a <- length(prior$ai); n.b <- length(prior$bi); n.tau <- length(prior$taui)
+
+  abin <- unique(diff(prior$ai))[1]
+  bbin <- unique(diff(prior$bi))[1]
+  taubin <- unique(diff(prior$taui))[1]
+
+  # prior normalization for integration
+  a.prior_norm <- prior$a.prior / (sum(prior$a.prior) * abin)
+  b.prior_norm <- prior$b.prior / (sum(prior$b.prior) * bbin)
+  tau.prior_norm <- prior$tau.prior / (sum(prior$tau.prior) * taubin)
+
+  # bimarginal priors & joint prior distributions
+  a.prior_norm2D <- matrix(rep(a.prior_norm, n.tau), nrow = n.a, ncol = n.tau)
+  tau.prior_norm2D <- matrix(rep(tau.prior_norm, each = n.a), nrow = n.a, ncol = n.tau)
+  a_tau.prior_norm2D <- a.prior_norm2D * tau.prior_norm2D
+  joint.prior_norm <- array(NA, dim = c(n.a, n.tau, n.b))
+  for(i in 1:n.b) joint.prior_norm[,, i] <- a_tau.prior_norm2D * b.prior_norm[i]
+  b_a.prior <- sapply(1:length(prior$ai), function(j) sapply(1:length(prior$bi), function(i) sum(joint.prior_norm[j, , i]))) * taubin
+  b_tau.prior <- sapply(1:length(prior$taui), function(j) sapply(1:length(prior$bi), function(i) sum(joint.prior_norm[, j, i]))) * abin
+  a_tau.prior <- sapply(1:length(prior$taui), function(j) sapply(1:length(prior$ai), function(i) sum(joint.prior_norm[i, j, ]))) * bbin
+
+  return(list(b_a.prior = b_a.prior, b_tau.prior = b_tau.prior, a_tau.prior = a_tau.prior, joint.prior_norm = joint.prior_norm))
 }
