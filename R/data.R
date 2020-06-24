@@ -41,7 +41,7 @@
 #'
 #' List of parameters `b`, `a_fb`, `tau` and `mc` estimaed for different stimulation `sites`, as given in
 #' Mignan et al. (2017).
-#' @format A table with the following columns:
+#' @format A data frame with the following columns:
 #' \describe{
 #'   \item{site}{stimulate site}
 #'   \item{mc}{completeness magnitude}
@@ -53,4 +53,4 @@
 #' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
-"par_Mignan_etal_SciRep2017.dat"
+"par_Mignan_etal_SciRep2017"
