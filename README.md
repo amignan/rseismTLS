@@ -1,7 +1,7 @@
 ---
 title: "rseismTLS"
 author: "Arnaud Mignan"
-date: "2019-12-13"
+date: "2020-06-24"
 output:
   html_document:
     toc: true
@@ -48,13 +48,13 @@ devtools::install_github("amignan/rseismTLS")
 
 ## Input example
 
-One dataset is so far provided (see `data/`), which is a susbet of the 2006 Basel, Switzerland, EGS experiment (Häring et al., 2008; Kraft and Deichmann, 2014). The injection profile `Basel2006_inj` was digitized from Häring et al. (2008) and the catalogue `Basel2006_seism` taken from the dataset provided by Kraft and Deichmann (2014), here limited to the initial 12 days (c. 6 days of stimulation and 6 days of post-injection decay) and to magnitude information only (spatial component not included). We will use this dataset to illustrate the various functionalities of rseismTLS. We will consistently use the following naming convention: `inj` for the injection profile and `seism` for the earthquake catalogue. User-created data sets must be in the following units: decimal days for time and cubic metres for injected volumes. Moreover, since the model so far does not include negative flow rates (i.e., bleed-off in post-injection phase), the injection flow rate must stop at the shut-in time and any negative flow rate during the injection phase be fixed to zero (this case is fortunately very rare). Following those rules will conform with the rseismTLS model computations.
+One dataset is so far provided (see `data/`), which is a simulated version of the 2006 Basel, Switzerland, EGS experiment (Häring et al., 2008; Kraft and Deichmann, 2014). The injection profile `Basel2006_inj` was digitized from Häring et al. (2008) and the catalogue `Basel2006_seism_simulated` derived from the dataset provided by Kraft and Deichmann (2014), here limited to the initial 12 days (c. 6 days of stimulation and 6 days of post-injection decay) and to magnitude information only (spatial component not included). To avoid any copyright infringement, we only provide a stochastic iteration of the Basel data (based on the thinning method (Lewis and Shedler, 1979) and the intensity function of Mignan et al. (2017) - see below). We will use this dataset to illustrate the various functionalities of rseismTLS. We will consistently use the following naming convention: `inj` for the injection profile and `seism` for the earthquake catalogue. User-created data sets must be in the following units: decimal days for time and cubic metres for injected volumes. Moreover, since the model so far does not include negative flow rates (i.e., bleed-off in post-injection phase), the injection flow rate must stop at the shut-in time and any negative flow rate during the injection phase be fixed to zero (this case is fortunately very rare). Following those rules will conform with the rseismTLS computational framework.
 
 
 ```r
-## Load 2006 Basel EGS data ##
+## Load the simulated 2006 Basel EGS data ##
 inj <- rseismTLS::Basel2006_inj
-seism <- rseismTLS::Basel2006_seism
+seism <- rseismTLS::Basel2006_seism_simulated
 # time t [days], flow rate dV [m^3/day], cumulative volume V [m^3]
 tail(inj, 5)       
 #>          t       dV        V
@@ -66,12 +66,12 @@ tail(inj, 5)
 #
 # same time t reference, event magnitudes m
 head(seism, 5)
-#>           t   m
-#> 1 0.9203546 0.4
-#> 2 1.0102819 0.5
-#> 3 1.0144468 0.9
-#> 4 1.0255598 0.6
-#> 5 1.0412036 1.4
+#>           t        m
+#> 1 0.9142506 2.030908
+#> 2 0.9387515 1.005578
+#> 3 1.2395748 1.018013
+#> 4 1.4741568 1.210736
+#> 5 1.5500578 1.191206
 ```
 
 
@@ -129,7 +129,7 @@ mbin <- .1
 mc <- rseismNet::mc.val(seism$m, method = 'mode', mbin)      # see other methods in rseismNet
 seism <- subset(seism, m > mc - mbin / 2)                    # complete earthquake catalogue
 (b.Aki <- rseismNet::beta.mle(seism$m, mc, mbin) / log(10))  # Aki (1965) MLE method
-#> [1] 1.580881
+#> [1] 1.606944
 ```
 
 #### Maximum likelihood estimation method
@@ -146,16 +146,16 @@ data <- list(seism = seism, inj = inj, m0 = mc, ts = t.shutin, Tmax = 12)
 #> 
 #>     filter, poly
 #> $a_fb
-#> [1] 0.09139539
+#> [1] 0.100735
 #> 
 #> $tau
-#> [1] 1.09832
+#> [1] 1.151804
 #> 
 #> $b
-#> [1] 1.580615
+#> [1] 1.606875
 #> 
 #> $nLL
-#> [1] -4161.768
+#> [1] -2595.884
 ```
 
 Note that the $b$ estimate is close to the MLE value obtained directly from the frequency-magnitude distribution (see `b.Aki`). One could also calculate $a_{fb}$ via the Shapiro Seismogenic Index (SI) method (e.g., Dinske and Shapiro, 2013) although that approach is less robust.
@@ -165,7 +165,7 @@ Note that the $b$ estimate is close to the MLE value obtained directly from the 
 ( Vtot <- tail(inj$V, 1) )        # cubic meters
 #> [1] 11626.74
 ( a_fb.SI <- rseismTLS::a_fb.val(nrow(seism), b.Aki, mc, Vtot) )
-#> [1] 0.186466
+#> [1] 0.1996769
 ```
 
 #### Model validation
@@ -255,16 +255,16 @@ In the case of independent time windows on each side of the shut-in time, the mo
 data_inj <- list(seism = subset(seism, t <= t.shutin), inj = inj, m0 = mc, ts = t.shutin, Tmax = 12)
 ( par_inj.MLE <- rseismTLS::model_par.mle_point(data_inj, window = 'injection') )
 #> $a_fb
-#> [1] 0.2177736
+#> [1] 0.1328267
 #> 
 #> $tau
 #> [1] NA
 #> 
 #> $b
-#> [1] 1.745873
+#> [1] 1.646938
 #> 
 #> $nLL
-#> [1] -3516.938
+#> [1] -2166.312
 
 data_post <- list(seism = subset(seism, t > t.shutin), m0 = mc, ts = t.shutin, Tmax = 12, 
                   lambda0 = seism.binned$rate[ind.post[1] - 1] / tbin)
@@ -274,13 +274,13 @@ data_post <- list(seism = subset(seism, t > t.shutin), m0 = mc, ts = t.shutin, T
 #> [1] NA
 #> 
 #> $tau
-#> [1] 0.9148888
+#> [1] 1.138642
 #> 
 #> $b
-#> [1] 1.160303
+#> [1] 1.473208
 #> 
 #> $nLL
-#> [1] -657.2135
+#> [1] -430.3742
 ```
 
 The parameter estimates here differ from the ones obtained previously due to the fact that there is no constraint to have a continuous function over the full sequence. For the Basel case, it does not lead to significant changes in $a_{fb}$ and $\tau$. However, we verify that the $b$-value decreases over time, as already known for this sequence (e.g., Mignan et al., 2017 - compare `par_inj.MLE$b` to `par_post.MLE$b`).
@@ -294,24 +294,24 @@ In the case in which only the seismicity rate `seism.binned` is available (e.g, 
 data <- list(seism.binned = seism.binned, inj.binned = inj.binned, b = b.Aki, m0 = mc, ts = t.shutin)
 ( par.MLE <- rseismTLS::model_par.mle_hist(data) )
 #> $a_fb
-#> [1] 0.08788649
+#> [1] 0.09704507
 #> 
 #> $tau
-#> [1] 1.104109
+#> [1] 1.15937
 #> 
 #> $nLL
-#> [1] 156.6454
+#> [1] 149.1395
 
 data_inj <- list(seism.binned = subset(seism.binned, t <= t.shutin), inj.binned = inj.binned, b = b.Aki, m0 = mc)
 ( par_inj.MLE <- rseismTLS::model_par.mle_hist(data_inj, window = 'injection') )
 #> $a_fb
-#> [1] 0.08229297
+#> [1] 0.09193446
 #> 
 #> $tau
 #> [1] NA
 #> 
 #> $nLL
-#> [1] 98.59394
+#> [1] 97.43646
 
 data_post <- list(seism.binned = subset(seism.binned, t > t.shutin), ts = t.shutin,
                   lambda0 = tail(seism.binned$rate[seism.binned$t <= t.shutin], 1))
@@ -320,16 +320,58 @@ data_post <- list(seism.binned = subset(seism.binned, t > t.shutin), ts = t.shut
 #> [1] NA
 #> 
 #> $tau
-#> [1] 0.9159418
+#> [1] 1.141612
 #> 
 #> $nLL
-#> [1] 60.03801
+#> [1] 51.51799
 ```
 
 
 ### Bayesian approach
 
-TO BE COMPLETED.
+The following Bayesian hierarchical framework was proposed by Broccardo et al. (2017). It is based on a nonhomogeneous Poisson process that follows the induced seismicity model of Mignan et al. (2017).
+
+#### Prior distribution estimation
+
+The prior distributions are selected as follows: Beta for $b$ and $a_{fb}$, and Gamma for $\tau$. The hyperparameters of the prior distributions are estimated in `model_prior.distr()` from the model parameters `par` fitted for various deep fluid stimulations by Mignan et al. (2017) (see dataset `par_Mignan_etal_SciRep2017.dat`). 
+
+
+```r
+par <- rseismTLS::par_Mignan_etal_SciRep2017
+ndat <- nrow(par)
+prior <- rseismTLS::model_prior.distr(par)
+#> Loading required package: MASS
+#> Warning in densfun(x, parm[1], parm[2], ...): NaNs produced
+
+par(mfrow = c(1,3))
+plot(prior$ai, prior$a.prior, type = 'l')
+points(par$a_fb, rep(0, ndat))
+plot(prior$bi, prior$b.prior, type = 'l')
+points(par$b_fb, rep(0, ndat))
+plot(prior$taui, prior$tau.prior, type = 'l')
+points(par$tau, rep(0, ndat))
+```
+
+<img src="man/figures/README-unnamed-chunk-12-1.png" width="100%" />
+
+In addition to the marginal prior distributions, the 3 joint prior distributions can be computed by using `model_joint_prior.distr()`:
+
+
+```r
+joint_prior <-  rseismTLS::model_joint_prior.distr(prior)
+
+par(mfrow = c(1,3))
+image(prior$bi, prior$ai, joint_prior$b_a.prior)
+image(prior$bi, prior$taui, joint_prior$b_tau.prior)
+image(prior$ai, prior$taui, joint_prior$a_tau.prior)
+```
+
+<img src="man/figures/README-unnamed-chunk-13-1.png" width="100%" />
+
+#### Posterior distribution estimation
+
+
+TO BE CONTINUED.
 
 
 ## Risk functions
@@ -346,6 +388,8 @@ Häring M.O., Schanz U., Ladner F., Dyer B.C. (2008), Characterisation of the Ba
 
 Kraft T., Deichmann N. (2014), High-precision relocation and focal mechanism of the injection-induced seismicity at the Basel EGS.
 Geothermics, 52, 59–73, doi: 10.1016/j.geothermics.2014.05.014
+
+Lewis P.A.W., Shedler G.S. (1979), Simulation of nonhomogeneous Poisson processes by thinning. Naval Res. Logistics Q., 26, 403–413, doi:10.1002/nav.3800260304
 
 Mignan A., Karnouvis D., Broccardo M., Wiemer S., Giardini D. (2019), Including seismic risk mitigation measures into the Levelized Cost Of Electricity in enhanced geothermal systems for optimal siting. Applied Energy, 238, 831-850, doi: 10.1016/j.apenergy.2019.01.109
 
