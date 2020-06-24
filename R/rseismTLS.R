@@ -5,7 +5,7 @@
 #' by fluid injection.
 #'
 #' @section data
-#' "Basel2006_inj", "Basel2006_seism", "Basel2006_seism_simulated"
+#' "Basel2006_inj", "Basel2006_seism_simulated"
 #' @section rseismTLS forecast functions:
 #' negloglik_point.val, model_par.mle_point, a_fb.val,
 #' data.bin, model_rate.val, negloglik_hist.val, model_par.mle_hist,
