@@ -552,6 +552,10 @@ model_prior.distr <- function(par, ai = seq(-5,1,.01), bi = seq(.5,2.,.01), taui
   tau.rate <- tau.par$estimate[2]
   tau.prior <- dgamma(taui, tau.shape, tau.rate)
 
+  abin <- unique(diff(prior$ai))[1]
+  bbin <- unique(diff(prior$bi))[1]
+  taubin <- unique(diff(prior$taui))[1]
+
   # prior normalization for integration
   a.prior_norm <- a.prior / (sum(a.prior) * abin)
   b.prior_norm <- b.prior / (sum(b.prior) * bbin)
