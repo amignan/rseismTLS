@@ -792,7 +792,7 @@ model_par.bayesian <- function(posterior, LL = NULL, type = 'complete'){
     indmax <- which(LL == max(LL), arr.ind = T)
     a.MLE <- posterior$ai[indmax[1]]
     b.MLE <- posterior$bi[indmax[3]]
-    if(type == 'complete') tau.MLE <- posterior$taui[indmax[2]] else tau.MLE < -NA
+    if(type == 'complete') tau.MLE <- posterior$taui[indmax[2]] else tau.MLE <- NA
   } else {
     a.MLE <- NA
     b.MLE <- NA
