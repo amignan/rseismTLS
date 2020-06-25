@@ -735,8 +735,8 @@ model_posterior.distr <- function(prior, LL, type = 'complete'){
       (sum(exp((LL - max(LL)) + log(prior$joint.prior.partial_norm))) * abin * bbin)
 
     # marginal posteriors
-    a.post <- sapply(1:length(prior$ai), function(i) sum(prior$joint.post_norm_partial[i, ])) * bbin
-    b.post <- sapply(1:length(prior$bi), function(i) sum(prior$joint.post_norm_partial[, i])) * abin
+    a.post <- sapply(1:length(prior$ai), function(i) sum(joint.post.partial_norm[i, ])) * bbin
+    b.post <- sapply(1:length(prior$bi), function(i) sum(joint.post.partial_norm[, i])) * abin
 
     return(list(ai = prior$ai, bi = prior$bi, a.post = a.post, b.post = b.post,
                 joint.post.partial_norm = joint.post.partial_norm))
