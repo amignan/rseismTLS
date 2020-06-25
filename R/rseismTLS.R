@@ -10,7 +10,7 @@
 #' negloglik_point.val, model_par.mle_point, a_fb.val,
 #' data.bin, model_rate.val, negloglik_hist.val, model_par.mle_hist,
 #' t.transform, stat.KS_uniform,
-#' model_prior.distr, model_joint_prior.distr, loglik_point.array, model_posterior.distr
+#' model_prior.distr, loglik_point.array, model_posterior.distr
 #' @section rseismNet risk functions: N/A
 #'
 #' @docType package
