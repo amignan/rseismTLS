@@ -887,7 +887,7 @@ forecast.seism <- function(data, prior, forecast.twin, metric) {
 
       # complete model
       else {
-        LL <- rseismTLS::loglik_point.array(list(seism = seism.past, inj = inj.past, m0 = mc, ts = ts, Tmax = Tmax), prior)
+        LL <- rseismTLS::loglik_point.array(list(seism = seism.past, inj = inj.past, m0 = mc, ts = ts, Tmax = data$Tmax), prior)
         posterior <- rseismTLS::model_posterior.distr(prior, LL, bimarginal = F)
         res <- rseismTLS::model_par.bayesian(posterior, LL)
       }
