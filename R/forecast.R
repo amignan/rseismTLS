@@ -724,10 +724,10 @@ model_posterior.distr <- function(prior, LL, type = 'complete', bimarginal = T){
       a_tau.post <- sapply(1:length(prior$taui), function(j) sapply(1:length(prior$ai), function(i) sum(joint.post_norm[i, j, ]))) * bbin
       return(list(ai = prior$ai, bi = prior$bi, taui = prior$taui,
                   a.post = a.post, b.post = b.post, tau.post = tau.post,
+                  b_a.post = b_a.post, b_tau.post = b_tau.post, a_tau.post = a_tau.post,
                   joint.post_norm = joint.post_norm))
     } else return(list(ai = prior$ai, bi = prior$bi, taui = prior$taui,
                        a.post = a.post, b.post = b.post, tau.post = tau.post,
-                       b_a.post = b_a.post, b_tau.post = b_tau.post, a_tau.post = a_tau.post,
                        joint.post_norm = joint.post_norm))
 
   } else {
