@@ -751,8 +751,8 @@ model_posterior.distr <- function(prior, LL, type = 'complete'){
 #' Read Broccardo et al. (2017) for details.
 #'
 #' @param posterior the posterior distribution parameters estimated by `model_posterior.distr()`
-#' @param type by default `complete` (full model), otherwise `partial` (injection phase only)
 #' @param LL the log likelihood distribution estimated by `loglik_point.array()`
+#' @param type by default `complete` (full model), otherwise `partial` (injection phase only)
 #' @return a data frame of the 3 parameter estimates based on 3 approaches:
 #' * `a_fb.MAP` the MAP estimate of the underground feedback activation (in /cubic metre)
 #' * `b.MAP` the MAP estimate of the slope of the Gutenberg-Richter law
@@ -770,7 +770,7 @@ model_posterior.distr <- function(prior, LL, type = 'complete'){
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{negloglik_point.val}, \code{model_par.mle_point}, \code{model_par.mle_hist}
-model_par.bayesian <- function(posterior, type = 'complete', LL = NULL){
+model_par.bayesian <- function(posterior, LL = NULL, type = 'complete'){
   abin <- unique(diff(posterior$ai))[1]
   bbin <- unique(diff(posterior$bi))[1]
   if(type == 'complete') taubin <- unique(diff(posterior$taui))[1]
