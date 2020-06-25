@@ -787,18 +787,22 @@ model_par.bayesian <- function(posterior, type = 'complete', LL = NULL){
   if(type == 'complete') tau.mean <- sum(posterior$taui * posterior$tau.post) * taubin
   else tau.mean <- NA
 
-  par <- data.frame(a_fb.MAP = a.MAP, b.MAP = b.MAP, tau.MAP = tau.MAP,
-                       a_fb.mean = a.mean, b.mean = b.mean, tau.mean = tau.mean)
-
   if(!is.null(LL)){
     #MLE
     indmax <- which(LL == max(LL), arr.ind = T)
     a.MLE <- posterior$ai[indmax[1]]
     b.MLE <- posterior$bi[indmax[3]]
     if(type == 'complete') tau.MLE <- posterior$taui[indmax[2]] else tau.MLE < -NA
-
-    par <- data.frame(par, data.frame(a_fb.MLE = a.MLE, b.MLE = b.MLE, tau.MLE = tau.MLE))
+  } else {
+    a.MLE <- NA
+    b.MLE <- NA
+    tau.MLE <- NA
   }
+
+  par <- data.frame(a_fb.MAP = a.MAP, b.MAP = b.MAP, tau.MAP = tau.MAP,
+                    a_fb.mean = a.mean, b.mean = b.mean, tau.mean = tau.mean,
+                    a_fb.MLE = a.MLE, b.MLE = b.MLE, tau.MLE = tau.MLE)
+
   return(par)
 }
 
