@@ -571,9 +571,14 @@ model_prior.distr <- function(par, ai = seq(-5,1,.01), bi = seq(.5,2.,.01), taui
   b_tau.prior <- sapply(1:length(taui), function(j) sapply(1:length(bi), function(i) sum(joint.prior_norm[, j, i]))) * abin
   a_tau.prior <- sapply(1:length(taui), function(j) sapply(1:length(ai), function(i) sum(joint.prior_norm[i, j, ]))) * bbin
 
+  # partial prior (no tau)
+  a.prior_norm2Dbis <- matrix(rep(a.prior_norm, n.b), nrow = n.a, ncol = n.b)
+  b.prior_norm2D <- matrix(rep(b.prior_norm, each = n.a), nrow = n.a, ncol = n.b)
+  joint.prior.partial_norm <- a.prior_norm2Dbis * b.prior_norm2D
+
   prior <- list(ai = ai, a.prior = a.prior, bi = bi, b.prior = b.prior, taui = taui, tau.prior = tau.prior,
                 b_a.prior = b_a.prior, b_tau.prior = b_tau.prior, a_tau.prior = a_tau.prior,
-                joint.prior_norm = joint.prior_norm)
+                joint.prior_norm = joint.prior_norm, joint.prior.partial_norm = joint.prior.partial_norm)
   return(prior)
 }
 
@@ -593,6 +598,10 @@ model_prior.distr <- function(par, ai = seq(-5,1,.01), bi = seq(.5,2.,.01), taui
 #' * `ts` shut-in time (in days) (not required for "`injection`")
 #' * `Tmax` upper range of the time window (in days) (not required for "`injection`")
 #' @param par.space an array of the input parameters
+#' * `bi` the vector of `b` increments
+#' * `ai` the vector of `a_fb` increments
+#' * `tau` the vector of `tau` increments (optional for `type = partial`)
+#' @param type by default `complete` (full model), otherwise `partial` (injection phase only)
 #' @return the log likelihood distribution for the specified `par.space` array
 #' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
 #' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
@@ -601,37 +610,59 @@ model_prior.distr <- function(par, ai = seq(-5,1,.01), bi = seq(.5,2.,.01), taui
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{negloglik_point.val}, \code{model_posterior.distr}
-loglik_point.array <- function(data, par.space) {
-  n.a <- length(par.space$ai); n.b <- length(par.space$bi); n.tau <- length(par.space$taui)
-  LL <- array(NA, c(n.a, n.tau, n.b))
+loglik_point.array <- function(data, par.space, type = 'complete') {
+  if(type == 'complete') {
+    n.a <- length(par.space$ai); n.b <- length(par.space$bi); n.tau <- length(par.space$taui)
+    LL <- array(NA, c(n.a, n.tau, n.b))
 
-  N <- nrow(data$seism)
-  seism.inj <- subset(data$seism, data$seism$t <= data$ts)
-  seism.post <- subset(data$seism, data$seism$t > data$ts)
-  Ninj <- nrow(seism.inj)
-  Npost <- nrow(seism.post)
-  dV <- interp1(data$inj$t, data$inj$dV, seism.inj$t)
-  dV[dV <= 0] <- NA       #avoid -Inf for log(dV) - model applies to positive dV only
-  dV.ts <- tail(dV, 1)
-  V.ts <- tail(data$inj$V, 1)
+    N <- nrow(data$seism)
+    seism.inj <- subset(data$seism, data$seism$t <= data$ts)
+    seism.post <- subset(data$seism, data$seism$t > data$ts)
+    Ninj <- nrow(seism.inj)
+    Npost <- nrow(seism.post)
+    dV <- interp1(data$inj$t, data$inj$dV, seism.inj$t)
+    dV[dV <= 0] <- NA       #avoid -Inf for log(dV) - model applies to positive dV only
+    dV.ts <- tail(dV, 1)
+    V.ts <- tail(data$inj$V, 1)
 
-  # components of length 1 or n.b
-  C2 <- sum(log(dV), na.rm = T)
-  C3 <- Npost * log(dV.ts)
-  C6 <- N * log(par.space$bi)
-  C7 <- N * log(log(10))
-  C8 <- -par.space$bi * log(10) * sum(data$seism$m)
-  C9 <- N  * par.space$bi * log(10) * (data$m0 - mbin/2)   # Mmax -> +Inf
+    # components of length 1 or n.b
+    C2 <- sum(log(dV), na.rm = T)
+    C3 <- Npost * log(dV.ts)
+    C6 <- N * log(par.space$bi)
+    C7 <- N * log(log(10))
+    C8 <- -par.space$bi * log(10) * sum(data$seism$m)
+    C9 <- N  * par.space$bi * log(10) * (data$m0 - mbin/2)   # Mmax -> +Inf
 
-  # other components as matrix [n.a, n.tau] for efficient computation
-  Ai <- matrix(rep(par.space$ai, n.tau), nrow = n.a, ncol = n.tau)
-  Taui <- matrix(rep(par.space$taui, each = n.a), nrow = n.a, ncol = n.tau)
-  C4 <- -1 / Taui * (sum(seism.post$t - data$ts))
-  for(i in 1:n.b){
-    C1 <- N * (Ai - par.space$bi[i] * data$m0) / log10(exp(1))
-    C5 <- -10^(Ai - par.space$bi[i] * data$m0) * (V.ts + dV.ts * Taui * (1-exp(-(data$Tmax - data$ts) / Taui)))
+    # other components as matrix [n.a, n.tau] for efficient computation
+    Ai <- matrix(rep(par.space$ai, n.tau), nrow = n.a, ncol = n.tau)
+    Taui <- matrix(rep(par.space$taui, each = n.a), nrow = n.a, ncol = n.tau)
+    C4 <- -1 / Taui * (sum(seism.post$t - data$ts))
+    for(i in 1:n.b){
+      C1 <- N * (Ai - par.space$bi[i] * data$m0) / log10(exp(1))
+      C5 <- -10^(Ai - par.space$bi[i] * data$m0) * (V.ts + dV.ts * Taui * (1-exp(-(data$Tmax - data$ts) / Taui)))
 
-    LL[,,i] <- C1 + C2 + C3 + C4 + C5 + C6[i] + C7 + C8[i] + C9[i]
+      LL[,,i] <- C1 + C2 + C3 + C4 + C5 + C6[i] + C7 + C8[i] + C9[i]
+    }
+  } else {
+    n.a <- length(par.space$ai); n.b <- length(par.space$bi)
+    LL <- array(NA, c(n.a, n.b))
+
+    N <- nrow(data$seism)
+    dV <- interp1(data$inj$t, data$inj$dV, data$seism$t)
+    dV[dV <= 0] <- NA       #avoid -Inf for log(dV) - model applies to positive dV only
+    V <- tail(data$inj$V, 1)
+
+    Ai <- matrix(rep(par.space$ai, n.b), nrow = n.a, ncol = n.b)
+    Bi <- matrix(rep(par.space$bi, each = n.a), nrow = n.a, ncol = n.b)
+
+    C1 <- N * (Ai - Bi * data$m0) / log10(exp(1))
+    C2 <- sum(log(dV), na.rm = T)
+    C5b <- -10^(Ai - Bi * data$m0) * V
+    C6 <- N * log(Bi)
+    C7 <- N * log(log(10))
+    C8 <- -Bi * log(10) * sum(data$seism$m)
+    C9 <- N  * Bi * log(10) * (data$m0 - mbin/2)   # Mmax -> +Inf
+    LL <- C1 + C2 + C5b + C6 + C7 + C8 + C9
   }
   return(LL)
 }
@@ -646,9 +677,11 @@ loglik_point.array <- function(data, par.space) {
 #' @param prior the list of model parameter increments as defined in `model_prior.distr`:
 #' * `bi` the vector of `b` increments
 #' * `ai` the vector of `a_fb` increments
-#' * `taui` the vector of `tau` increments
-#' * `joint.prior_norm` the 3-dimensional array of the normalized joint prior distribution
+#' * `taui` the vector of `tau` increments (optional for `type = partial`)
+#' * `joint.prior_norm` the 3-dimensional array of the normalized joint prior distribution  (for `type = complete`)
+#' * `joint.prior.partial_norm` the 3-dimensional array of the normalized joint prior distribution (for `type = partial`)
 #' @param LL the log likelihood distribution computed from `loglik_point.array`
+#' @param type by default `complete` (full model), otherwise `partial` (injection phase only)
 #' @return a list of the posterior distributions:
 #' * `bi` the vector of `b` increments
 #' * `ai` the vector of `a_fb` increments
@@ -667,30 +700,47 @@ loglik_point.array <- function(data, par.space) {
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{model_prior.distr}, \code{model_joint_prior.distr}, \code{loglik_point.array}
-model_posterior.distr <- function(prior, LL){
-  abin <- unique(diff(prior$ai))[1]
-  bbin <- unique(diff(prior$bi))[1]
-  taubin <- unique(diff(prior$taui))[1]
+model_posterior.distr <- function(prior, LL, type = 'complete'){
+  if(type == 'complete') {
+    abin <- unique(diff(prior$ai))[1]
+    bbin <- unique(diff(prior$bi))[1]
+    taubin <- unique(diff(prior$taui))[1]
 
-  # joint posterior distribution
-  # with log and minus max(LL) to avoid overflow
-  joint.post_norm <- exp((LL - max(LL)) + log(prior$joint.prior_norm)) /
-    (sum(exp((LL - max(LL)) + log(prior$joint.prior_norm))) * abin * taubin * bbin)
+    # joint posterior distribution
+    # with log and minus max(LL) to avoid overflow
+    joint.post_norm <- exp((LL - max(LL)) + log(prior$joint.prior_norm)) /
+      (sum(exp((LL - max(LL)) + log(prior$joint.prior_norm))) * abin * taubin * bbin)
 
-  # marginal posteriors
-  a.post <- sapply(1:length(prior$ai), function(i) sum(joint.post_norm[i,,])) * taubin * bbin
-  b.post <- sapply(1:length(prior$bi), function(i) sum(joint.post_norm[,, i])) * taubin * abin
-  tau.post <- sapply(1:length(prior$taui), function(i) sum(joint.post_norm[, i,])) * abin * bbin
+    # marginal posteriors
+    a.post <- sapply(1:length(prior$ai), function(i) sum(joint.post_norm[i,,])) * taubin * bbin
+    b.post <- sapply(1:length(prior$bi), function(i) sum(joint.post_norm[,, i])) * taubin * abin
+    tau.post <- sapply(1:length(prior$taui), function(i) sum(joint.post_norm[, i,])) * abin * bbin
 
-  # bimarginal posteriors
-  b_a.post <- sapply(1:length(prior$ai), function(j) sapply(1:length(prior$bi), function(i) sum(joint.post_norm[j,, i]))) * taubin
-  b_tau.post <- sapply(1:length(prior$taui), function(j) sapply(1:length(prior$bi), function(i) sum(joint.post_norm[, j, i]))) * abin
-  a_tau.post <- sapply(1:length(prior$taui), function(j) sapply(1:length(prior$ai), function(i) sum(joint.post_norm[i, j, ]))) * bbin
+    # bimarginal posteriors
+    b_a.post <- sapply(1:length(prior$ai), function(j) sapply(1:length(prior$bi), function(i) sum(joint.post_norm[j,, i]))) * taubin
+    b_tau.post <- sapply(1:length(prior$taui), function(j) sapply(1:length(prior$bi), function(i) sum(joint.post_norm[, j, i]))) * abin
+    a_tau.post <- sapply(1:length(prior$taui), function(j) sapply(1:length(prior$ai), function(i) sum(joint.post_norm[i, j, ]))) * bbin
 
-  return(list(ai = prior$ai, bi = prior$bi, taui = prior$taui,
-              a.post = a.post, b.post = b.post, tau.post = tau.post,
-              b_a.post = b_a.post, b_tau.post = b_tau.post, a_tau.post = a_tau.post,
-              joint.post_norm = joint.post_norm))
+    return(list(ai = prior$ai, bi = prior$bi, taui = prior$taui,
+                a.post = a.post, b.post = b.post, tau.post = tau.post,
+                b_a.post = b_a.post, b_tau.post = b_tau.post, a_tau.post = a_tau.post,
+                joint.post_norm = joint.post_norm))
+  } else {
+    abin <- unique(diff(prior$ai))[1]
+    bbin <- unique(diff(prior$bi))[1]
+
+    # joint posterior distribution
+    # with log and minus max(LL) to avoid overflow
+    joint.post.partial_norm <- exp((LL - max(LL)) + log(prior$joint.prior.partial_norm)) /
+      (sum(exp((LL - max(LL)) + log(prior$joint.prior.partial_norm))) * abin * bbin)
+
+    # marginal posteriors
+    a.post <- sapply(1:length(prior$ai), function(i) sum(prior$joint.post_norm_partial[i, ])) * bbin
+    b.post <- sapply(1:length(prior$bi), function(i) sum(prior$joint.post_norm_partial[, i])) * abin
+
+    return(list(ai = prior$ai, bi = prior$bi, a.post = a.post, b.post = b.post,
+                joint.post.partial_norm = joint.post.partial_norm))
+  }
 }
 
 #' Model Parameter Bayesian Estimation (Point Data)
@@ -701,17 +751,18 @@ model_posterior.distr <- function(prior, LL){
 #' Read Broccardo et al. (2017) for details.
 #'
 #' @param posterior the posterior distribution parameters estimated by `model_posterior.distr()`
+#' @param type by default `complete` (full model), otherwise `partial` (injection phase only)
 #' @param LL the log likelihood distribution estimated by `loglik_point.array()`
 #' @return a data frame of the 3 parameter estimates based on 3 approaches:
 #' * `a_fb.MAP` the MAP estimate of the underground feedback activation (in /cubic metre)
 #' * `b.MAP` the MAP estimate of the slope of the Gutenberg-Richter law
-#' * `tau.MAP` the MAP estimate of the mean relaxation time (in days)
+#' * `tau.MAP` the MAP estimate of the mean relaxation time (in days) (if `type = complete`)
 #' * `a_fb.mean` the posterior mean estimate of the underground feedback activation (in /cubic metre)
 #' * `b.mean` the posterior mean estimate of the slope of the Gutenberg-Richter law
-#' * `tau.mean` the posterior mean estimate of the mean relaxation time (in days)
+#' * `tau.mean` the posterior mean estimate of the mean relaxation time (in days) (if `type = complete`)
 #' * `a_fb.MLE` the MLE of the underground feedback activation (in /cubic metre) - optional result
 #' * `b.MLE` the MLE of the slope of the Gutenberg-Richter law - optional result
-#' * `tau.MLE` the MLE of the mean relaxation time (in days) - optional result
+#' * `tau.MLE` the MLE of the mean relaxation time (in days) - optional result (if `type = complete`)
 #' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
 #' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
 #' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
@@ -719,20 +770,22 @@ model_posterior.distr <- function(prior, LL){
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{negloglik_point.val}, \code{model_par.mle_point}, \code{model_par.mle_hist}
-model_par.bayesian <- function(posterior, LL = NULL){
+model_par.bayesian <- function(posterior, type = 'complete', LL = NULL){
   abin <- unique(diff(posterior$ai))[1]
   bbin <- unique(diff(posterior$bi))[1]
-  taubin <- unique(diff(posterior$taui))[1]
+  if(type == 'complete') taubin <- unique(diff(posterior$taui))[1]
 
   #MAP
   a.MAP <- posterior$ai[posterior$a.post == max(posterior$a.post)]
   b.MAP <- posterior$bi[posterior$b.post == max(posterior$b.post)]
-  tau.MAP <- posterior$taui[posterior$tau.post == max(posterior$tau.post)]
+  if(type == 'complete') tau.MAP <- posterior$taui[posterior$tau.post == max(posterior$tau.post)]
+  else tau.MAP <- NA
 
   #mean
   a.mean <- sum(posterior$ai * posterior$a.post) * abin
   b.mean <- sum(posterior$bi * posterior$b.post) * bbin
-  tau.mean <- sum(posterior$taui * posterior$tau.post) * taubin
+  if(type == 'complete') tau.mean <- sum(posterior$taui * posterior$tau.post) * taubin
+  else tau.mean <- NA
 
   par <- data.frame(a_fb.MAP = a.MAP, b.MAP = b.MAP, tau.MAP = tau.MAP,
                        a_fb.mean = a.mean, b.mean = b.mean, tau.mean = tau.mean)
@@ -742,7 +795,7 @@ model_par.bayesian <- function(posterior, LL = NULL){
     indmax <- which(LL == max(LL), arr.ind = T)
     a.MLE <- posterior$ai[indmax[1]]
     b.MLE <- posterior$bi[indmax[3]]
-    tau.MLE <- posterior$taui[indmax[2]]
+    if(type == 'complete') tau.MLE <- posterior$taui[indmax[2]] else tau.MLE < -NA
 
     par <- data.frame(par, data.frame(a_fb.MLE = a.MLE, b.MLE = b.MLE, tau.MLE = tau.MLE))
   }
