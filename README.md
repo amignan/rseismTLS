@@ -1,7 +1,7 @@
 ---
 title: "rseismTLS"
 author: "Arnaud Mignan"
-date: "2020-06-24"
+date: "2020-06-25"
 output:
   html_document:
     toc: true
@@ -22,6 +22,7 @@ What rseismTLS does:
 
 - Models the seismicity induced by fluid injection in the underground, based on the linear relationship between flow rate and seismicity rate;
 - Models the seismicity trailing effect (post-injection) based on an exponential relaxation function;
+- Estimates the model parameters with two alternative approaches: frequentist and Bayesian;
 - Forecasts future seismicity based on planned underground stimulation (COMING SOON);
 - Estimates the magnitude threshold above which stimulation must be stopped to respect a risk-based safety criterion (COMING SOON);
 - Computes the seismic risk for a point source based on the RISK-UE method and EMS98 scale (COMING LATER);
@@ -354,16 +355,14 @@ points(par$tau, rep(0, ndat))
 
 <img src="man/figures/README-unnamed-chunk-12-1.png" width="100%" />
 
-In addition to the marginal prior distributions, the 3 joint prior distributions can be computed by using `model_joint_prior.distr()`:
+In addition to the marginal prior distributions, `model_prior.distr()` also provides the 3 joint prior distributions:
 
 
 ```r
-joint_prior <-  rseismTLS::model_joint_prior.distr(prior)
-
 par(mfrow = c(1,3))
-image(prior$bi, prior$ai, joint_prior$b_a.prior)
-image(prior$bi, prior$taui, joint_prior$b_tau.prior)
-image(prior$ai, prior$taui, joint_prior$a_tau.prior)
+image(prior$bi, prior$ai, prior$b_a.prior)
+image(prior$bi, prior$taui, prior$b_tau.prior)
+image(prior$ai, prior$taui, prior$a_tau.prior)
 ```
 
 <img src="man/figures/README-unnamed-chunk-13-1.png" width="100%" />
@@ -380,12 +379,12 @@ data <- list(seism = seism, inj = inj, m0 = mc, ts = t.shutin, Tmax = 12)
 LL <- rseismTLS::loglik_point.array(data, prior)
 
 # compute posterior distribution
-posterior <- rseismTLS::model_posterior.distr(prior, joint_prior, LL)
+posterior <- rseismTLS::model_posterior.distr(prior, LL)
 
 par(mfrow = c(1,3))
-plot(prior$ai, posterior$a.post, type = 'l')
-plot(prior$bi, posterior$b.post, type = 'l')
-plot(prior$taui, posterior$tau.post, type = 'l')
+plot(posterior$ai, posterior$a.post, type = 'l')
+plot(posterior$bi, posterior$b.post, type = 'l')
+plot(posterior$taui, posterior$tau.post, type = 'l')
 ```
 
 <img src="man/figures/README-unnamed-chunk-14-1.png" width="100%" />
@@ -395,16 +394,21 @@ Similarly, we can plot the joint posterior distributions:
 
 ```r
 par(mfrow = c(1,3))
-image(prior$bi, prior$ai, posterior$b_a.post, xlim = c(1.4, 1.8), ylim = c(-.1, .3))
-image(prior$bi, prior$taui, posterior$b_tau.post, xlim = c(1.4, 1.8), ylim = c(.8, 1.4))
-image(prior$ai, prior$taui, posterior$a_tau.post, xlim = c(-.1, .3), ylim = c(.8, 1.4))
+image(posterior$bi, posterior$ai, posterior$b_a.post, xlim = c(1.4, 1.8), ylim = c(-.1, .3))
+image(posterior$bi, posterior$taui, posterior$b_tau.post, xlim = c(1.4, 1.8), ylim = c(.8, 1.4))
+image(posterior$ai, posterior$taui, posterior$a_tau.post, xlim = c(-.1, .3), ylim = c(.8, 1.4))
 ```
 
 <img src="man/figures/README-unnamed-chunk-15-1.png" width="100%" />
 
+Finally, the model parameters are estimated with `model_par.bayesian()`. Three estimates are given, the posterior mean, posterior mode (i.e. Maximum A Posteriori (MAP) estimate), and the MLE (the later only if the log likelihood distribution `LL` is specified).
 
-TO BE CONTINUED.
 
+```r
+( par.Bayes <- rseismTLS::model_par.bayesian(posterior, LL) )
+#>   a_fb.MAP b.MAP tau.MAP  a_fb.mean   b.mean tau.mean a_fb.MLE b.MLE tau.MLE
+#> 1     0.07  1.57    1.15 0.06739245 1.571804 1.160416      0.1  1.61    1.15
+```
 
 ## Risk functions
 
