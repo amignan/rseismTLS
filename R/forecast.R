@@ -682,6 +682,7 @@ loglik_point.array <- function(data, par.space, type = 'complete') {
 #' * `joint.prior.partial_norm` the 3-dimensional array of the normalized joint prior distribution (for `type = partial`)
 #' @param LL the log likelihood distribution computed from `loglik_point.array`
 #' @param type by default `complete` (full model), otherwise `partial` (injection phase only)
+#' @param bimarginal boolean, true by default. Turn to false for fast computation (e.g. forecasting)
 #' @return a list of the posterior distributions:
 #' * `bi` the vector of `b` increments
 #' * `ai` the vector of `a_fb` increments
@@ -689,9 +690,9 @@ loglik_point.array <- function(data, par.space, type = 'complete') {
 #' * `a.post` the vector of the `a_fb` posterior distribution
 #' * `b.post` the vector of the `b` posterior distribution
 #' * `tau.post` the vector of the `tau` posterior distribution
-#' * `b_a.post` the array of the (`b`, `a_fb`) joint distribution
-#' * `b_tau.post` the array of the (`b`, `tau`) joint distribution
-#' * `a_tau.post` the array of the (`a_fb`, `tau`) joint distribution
+#' * `b_a.post` the array of the (`b`, `a_fb`) joint distribution (if `bimarginal = T`)
+#' * `b_tau.post` the array of the (`b`, `tau`) joint distribution (if `bimarginal = T`)
+#' * `a_tau.post` the array of the (`a_fb`, `tau`) joint distribution (if `bimarginal = T`)
 #' * `joint.post_norm` the 3-dimensional array of the normalized joint posterior distribution
 #' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
 #' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
@@ -700,7 +701,7 @@ loglik_point.array <- function(data, par.space, type = 'complete') {
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{model_prior.distr}, \code{model_joint_prior.distr}, \code{loglik_point.array}
-model_posterior.distr <- function(prior, LL, type = 'complete'){
+model_posterior.distr <- function(prior, LL, type = 'complete', bimarginal = T){
   if(type == 'complete') {
     abin <- unique(diff(prior$ai))[1]
     bbin <- unique(diff(prior$bi))[1]
@@ -716,15 +717,19 @@ model_posterior.distr <- function(prior, LL, type = 'complete'){
     b.post <- sapply(1:length(prior$bi), function(i) sum(joint.post_norm[,, i])) * taubin * abin
     tau.post <- sapply(1:length(prior$taui), function(i) sum(joint.post_norm[, i,])) * abin * bbin
 
-    # bimarginal posteriors
-    b_a.post <- sapply(1:length(prior$ai), function(j) sapply(1:length(prior$bi), function(i) sum(joint.post_norm[j,, i]))) * taubin
-    b_tau.post <- sapply(1:length(prior$taui), function(j) sapply(1:length(prior$bi), function(i) sum(joint.post_norm[, j, i]))) * abin
-    a_tau.post <- sapply(1:length(prior$taui), function(j) sapply(1:length(prior$ai), function(i) sum(joint.post_norm[i, j, ]))) * bbin
+    if(bimarginal) {
+      # bimarginal posteriors
+      b_a.post <- sapply(1:length(prior$ai), function(j) sapply(1:length(prior$bi), function(i) sum(joint.post_norm[j,, i]))) * taubin
+      b_tau.post <- sapply(1:length(prior$taui), function(j) sapply(1:length(prior$bi), function(i) sum(joint.post_norm[, j, i]))) * abin
+      a_tau.post <- sapply(1:length(prior$taui), function(j) sapply(1:length(prior$ai), function(i) sum(joint.post_norm[i, j, ]))) * bbin
+      return(list(ai = prior$ai, bi = prior$bi, taui = prior$taui,
+                  a.post = a.post, b.post = b.post, tau.post = tau.post,
+                  joint.post_norm = joint.post_norm))
+    } else return(list(ai = prior$ai, bi = prior$bi, taui = prior$taui,
+                       a.post = a.post, b.post = b.post, tau.post = tau.post,
+                       b_a.post = b_a.post, b_tau.post = b_tau.post, a_tau.post = a_tau.post,
+                       joint.post_norm = joint.post_norm))
 
-    return(list(ai = prior$ai, bi = prior$bi, taui = prior$taui,
-                a.post = a.post, b.post = b.post, tau.post = tau.post,
-                b_a.post = b_a.post, b_tau.post = b_tau.post, a_tau.post = a_tau.post,
-                joint.post_norm = joint.post_norm))
   } else {
     abin <- unique(diff(prior$ai))[1]
     bbin <- unique(diff(prior$bi))[1]
