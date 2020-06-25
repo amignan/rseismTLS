@@ -693,3 +693,60 @@ model_posterior.distr <- function(prior, LL){
               joint.post_norm = joint.post_norm))
 }
 
+#' Model Parameter Bayesian Estimation (Point Data)
+#'
+#' Provides the posterior mean, posterior mode (i.e. Maximum A Posteriori (MAP) estimate), and the
+#' MLE (the later only if the log likelihood distribution `LL` is specified).
+#'
+#' Read Broccardo et al. (2017) for details.
+#'
+#' @param posterior the posterior distribution parameters estimated by `model_posterior.distr()`
+#' @param LL the log likelihood distribution estimated by `loglik_point.array()`
+#' @return a data frame of the 3 parameter estimates based on 3 approaches:
+#' * `a_fb.MAP` the MAP estimate of the underground feedback activation (in /cubic metre)
+#' * `b.MAP` the MAP estimate of the slope of the Gutenberg-Richter law
+#' * `tau.MAP` the MAP estimate of the mean relaxation time (in days)
+#' * `a_fb.mean` the posterior mean estimate of the underground feedback activation (in /cubic metre)
+#' * `b.mean` the posterior mean estimate of the slope of the Gutenberg-Richter law
+#' * `tau.mean` the posterior mean estimate of the mean relaxation time (in days)
+#' * `a_fb.MLE` the MLE of the underground feedback activation (in /cubic metre)
+#' * `b.MLE` the MLE of the slope of the Gutenberg-Richter law
+#' * `tau.MLE` the MLE of the mean relaxation time (in days)
+#' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
+#' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
+#' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' @seealso \code{negloglik_point.val}, \code{model_par.mle_point}, \code{model_par.mle_hist}
+model_par.bayesian <- function(posterior, LL = NULL){
+  abin <- unique(diff(posterior$ai))[1]
+  bbin <- unique(diff(posterior$bi))[1]
+  taubin <- unique(diff(posterior$taui))[1]
+
+  #MAP
+  a.MAP <- ai[a.post == max(posterior$a.post)]
+  b.MAP <- bi[b.post == max(posterior$b.post)]
+  tau.MAP <- taui[tau.post == max(posterior$tau.post)]
+
+  #mean
+  a.mean <- sum(ai * posterior$a.post) * abin
+  b.mean <- sum(bi * posterior$b.post) * bbin
+  tau.mean <- sum(taui * posterior$tau.post) * taubin
+
+  par <- data.frame(a_fb.MAP = a.MAP, b.MAP = b.MAP, tau.MAP = tau.MAP,
+                       a_fb.mean = a.mean, b.mean = b.mean, tau.mean = tau.mean)
+
+  if(!is.null(LL)){
+    #MLE
+    indmax <- which(LL == max(LL), arr.ind = T)
+    a.MLE <- ai[indmax[1]]
+    b.MLE <- bi[indmax[3]]
+    tau.MLE <- taui[indmax[2]]
+
+    par <- data.frame(par, data.frame(a_fb.MLE = a.MLE, b.MLE = b.MLE, tau.MLE = tau.MLE))
+  }
+  return(par)
+}
+
+
