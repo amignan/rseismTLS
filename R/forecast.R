@@ -811,4 +811,107 @@ model_par.bayesian <- function(posterior, LL = NULL, type = 'complete'){
   return(par)
 }
 
+#' Bayesian forecasting
+#'
+#' Forecasts the rate of seismicity in time windows based on the seismicity and injected fluids previously
+#' observed and the future expected injection profile.
+#'
+#' Approach based on the hierarchical Bayesian framework of Broccardo et al. (2017) with the induced seismicity
+#' model of MIgnan et al. (2017). All the `data` is used and split into `forecast.twin` bins. From there, all data
+#' before a given bin is used as input for model calibration.
+#'
+#' @param data a list containing all the necessary point data:
+#' * `seism` an earthquake catalogue data frame of parameters `t` (time in days) and `m` (magnitude)
+#' * `inj` matching injection profile data frame of parameters `t` (time in days), `dV` (flow rate in cubic
+#' metre/day) and `V` (cumulative injected volume in cubic metres)
+#' * `m0` the minimum magnitude cutoff of the earthquake catalogue
+#' * `ts` shut-in time (in days) (not required for "`injection`")
+#' * `Tmax` upper range of the time window (in days) (not required for "`injection`")
+#' @param prior the list of prior distribution paarmeters as defined by `model_prior.distr`:
+#' * `bi` the vector of `b` increments
+#' * `b.prior` the prior Beta distribution of `b`
+#' * `ai` the vector of `a_fb` increments
+#' * `a.prior` the prior Beta distribution of `a_fb`
+#' * `taui` the vector of `tau` increments
+#' * `tau.prior` the prior Gamma distribution of `tau`
+#' * `b_a.prior` the array of the (`b`, `a_fb`) joint distribution
+#' * `b_tau.prior` the array of the (`b`, `tau`) joint distribution
+#' * `a_tau.prior` the array of the (`a_fb`, `tau`) joint distribution
+#' * `joint.prior_norm` the 3-dimensional array of the normalized joint prior distribution
+#' @param forecast.twin the temporal window (in days) of the forecast
+#' @param metric the way the model parameters are estimated (`MLE`, `MAP` or posterior `mean`)
+#' @return a data frame of parameter estimates per time bin
+#' * `ti` center of the time bin
+#' * `a_fb` the estimated parameter `a_fb` (in m^-3)
+#' * `b` the estimated parameter `b`
+#' * `tau` the estimaed parameter `tau` (in days)
+#' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
+#' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
+#' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
+#' @references Mignan A., Broccardo M., Wiemer S., Giardini D. (2017), Induced seismicity closed-form
+#' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
+#' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
+#' @seealso \code{loglik_point.array}, \code{model_posterior.distr}, \code{model_par.bayesian}
+forecast.seism <- function(data, prior, forecast.twin, metric) {
+  forecast.bins <- seq(forecast.twin, data$Tmax - forecast.twin, forecast.twin)
+  forecast.tmid <- forecast.bins + forecast.twin / 2
+  forecast.n <- length(forecast.tmid)
+  forecast.dV <- interp1(c(0, data$inj$t), c(0, data$inj$dV), forecast.tmid[forecast.tmid < data$ts], method = 'linear')
 
+  ti <-  seq(0, data$ts, 1/24/60)
+  dVi <- interp1(c(0, data$inj$t), c(0, data$inj$dV), ti, method = "linear")
+  Vi <- interp1(c(0, data$inj$t), c(0, data$inj$V), ti, method = "linear")
+  inj_highres <- rbind(data.frame(t = ti, dV = dVi, V = Vi), tail(data$inj, 1)) #to keep the exact shut-in
+
+  indmax <- which(LL == max(LL), arr.ind = T)
+  a.prior <- prior$ai[which(prior$a.prior == max(prior$a.prior))]
+  b.prior <- prior$bi[which(prior$b.prior == max(prior$b.prior))]
+  tau.prior <- prior$taui[which(prior$tau.prior == max(prior$tau.prior))]
+
+  ## parameter estimation ##
+  a_fb <- rep(a.prior, forecast.n)
+  b <- rep(b.prior, forecast.n)
+  tau <- rep(tau.prior, forecast.n)
+  for(i in 1:forecast.n) {
+    print(paste(i, '/', forecast.n))
+    seism.past <- subset(data$seism, t <= forecast.bins[i])
+    inj.past <- subset(inj_highres, t <= forecast.bins[i])
+    if(nrow(inj.past) != 0) {
+
+      # incomplete model (no trailing effect)
+      if(forecast.tmid[i] < data$ts) {
+        LL <- rseismTLS::loglik_point.array(list(seism = seism.past, inj = inj.past, m0 = mc), prior, type = 'partial')
+        posterior <- rseismTLS::model_posterior.distr(prior, LL, type = 'partial')
+        res <- rseismTLS::model_par.bayesian(posterior, LL, type = 'partial')
+      }
+
+      # complete model
+      else {
+        LL <- rseismTLS::loglik_point.array(list(seism = seism.past, inj = inj.past, m0 = mc, ts = ts, Tmax = Tmax), prior)
+        posterior <- rseismTLS::model_posterior.distr(prior, LL, bimarginal = F)
+        res <- rseismTLS::model_par.bayesian(posterior, LL)
+      }
+
+      if(metric == "MLE") {
+        a_fb[i] <- res$a_fb.MLE
+        b[i] <- res$b.MLE
+        if(forecast.tmid[i] >= data$ts) tau[i] <- res$tau.MLE
+      }
+      if(metric == "MAP") {
+        a_fb[i] <- res$a_fb.MAP
+        b[i] <- res$b.MAP
+        if(forecast.tmid[i] >= data$ts) tau[i] <- res$tau.MAP
+      }
+      if(metric == "mean") {
+        a_fb[i] <- res$a_fb.mean
+        b[i] <- res$b.mean
+        if(forecast.tmid[i] >= data$ts) tau[i] <- res$tau.mean
+      }
+    }
+  }
+
+  ## forecast ##
+  # TO BE DONE
+
+  return(data.frame(ti = forecast.tmid, a_fb = a_fb, b = b, tau = tau))
+}
