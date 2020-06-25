@@ -709,9 +709,9 @@ model_posterior.distr <- function(prior, LL){
 #' * `a_fb.mean` the posterior mean estimate of the underground feedback activation (in /cubic metre)
 #' * `b.mean` the posterior mean estimate of the slope of the Gutenberg-Richter law
 #' * `tau.mean` the posterior mean estimate of the mean relaxation time (in days)
-#' * `a_fb.MLE` the MLE of the underground feedback activation (in /cubic metre)
-#' * `b.MLE` the MLE of the slope of the Gutenberg-Richter law
-#' * `tau.MLE` the MLE of the mean relaxation time (in days)
+#' * `a_fb.MLE` the MLE of the underground feedback activation (in /cubic metre) - optional result
+#' * `b.MLE` the MLE of the slope of the Gutenberg-Richter law - optional result
+#' * `tau.MLE` the MLE of the mean relaxation time (in days) - optional result
 #' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
 #' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
 #' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
@@ -725,14 +725,14 @@ model_par.bayesian <- function(posterior, LL = NULL){
   taubin <- unique(diff(posterior$taui))[1]
 
   #MAP
-  a.MAP <- ai[a.post == max(posterior$a.post)]
-  b.MAP <- bi[b.post == max(posterior$b.post)]
-  tau.MAP <- taui[tau.post == max(posterior$tau.post)]
+  a.MAP <- posterior$ai[posterior$a.post == max(posterior$a.post)]
+  b.MAP <- posterior$bi[posterior$b.post == max(posterior$b.post)]
+  tau.MAP <- posterior$taui[posterior$tau.post == max(posterior$tau.post)]
 
   #mean
-  a.mean <- sum(ai * posterior$a.post) * abin
-  b.mean <- sum(bi * posterior$b.post) * bbin
-  tau.mean <- sum(taui * posterior$tau.post) * taubin
+  a.mean <- sum(posterior$ai * posterior$a.post) * abin
+  b.mean <- sum(posterior$bi * posterior$b.post) * bbin
+  tau.mean <- sum(posterior$taui * posterior$tau.post) * taubin
 
   par <- data.frame(a_fb.MAP = a.MAP, b.MAP = b.MAP, tau.MAP = tau.MAP,
                        a_fb.mean = a.mean, b.mean = b.mean, tau.mean = tau.mean)
