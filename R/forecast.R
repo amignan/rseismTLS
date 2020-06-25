@@ -740,9 +740,9 @@ model_par.bayesian <- function(posterior, LL = NULL){
   if(!is.null(LL)){
     #MLE
     indmax <- which(LL == max(LL), arr.ind = T)
-    a.MLE <- ai[indmax[1]]
-    b.MLE <- bi[indmax[3]]
-    tau.MLE <- taui[indmax[2]]
+    a.MLE <- posterior$ai[indmax[1]]
+    b.MLE <- posterior$bi[indmax[3]]
+    tau.MLE <- posterior$taui[indmax[2]]
 
     par <- data.frame(par, data.frame(a_fb.MLE = a.MLE, b.MLE = b.MLE, tau.MLE = tau.MLE))
   }
