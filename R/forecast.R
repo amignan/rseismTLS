@@ -751,8 +751,8 @@ model_posterior.distr <- function(prior, LL, type = 'complete', bimarginal = T){
 
 #' Model Parameter Bayesian Estimation (Point Data)
 #'
-#' Provides the posterior mean, posterior mode (i.e. Maximum A Posteriori (MAP) estimate), and the
-#' MLE (the later only if the log likelihood distribution `LL` is specified).
+#' Provides the posterior mean and posterior mode (i.e. Maximum A Posteriori (MAP) estimate), the posterior
+#' 90% credible interval, and the MLE (the later only if the log likelihood distribution `LL` is specified).
 #'
 #' Read Broccardo et al. (2017) for details.
 #'
@@ -760,13 +760,16 @@ model_posterior.distr <- function(prior, LL, type = 'complete', bimarginal = T){
 #' @param LL the log likelihood distribution estimated by `loglik_point.array()`
 #' @param type by default `complete` (full model), otherwise `partial` (injection phase only)
 #' @return a data frame of the 3 parameter estimates based on 3 approaches:
-#' * `a_fb.MAP` the MAP estimate of the underground feedback activation (in /cubic metre)
+#' * `a_fb.MAP` the MAP estimate of the underground feedback activation (in m^-3)
 #' * `b.MAP` the MAP estimate of the slope of the Gutenberg-Richter law
 #' * `tau.MAP` the MAP estimate of the mean relaxation time (in days) (if `type = complete`)
-#' * `a_fb.mean` the posterior mean estimate of the underground feedback activation (in /cubic metre)
+#' * `a_fb.mean` the posterior mean estimate of the underground feedback activation (in m^-3)
 #' * `b.mean` the posterior mean estimate of the slope of the Gutenberg-Richter law
 #' * `tau.mean` the posterior mean estimate of the mean relaxation time (in days) (if `type = complete`)
-#' * `a_fb.MLE` the MLE of the underground feedback activation (in /cubic metre) - optional result
+#' * `a_fb.CI` the posterior 90% credible interval of the underground feedback activation (in m^-3)
+#' * `b.CI` the posterior 90% credible interval of the slope of the Gutenberg-Richter law
+#' * `tau.CI` the posterior 90% credible interval of the mean relaxation time (in days) (if `type = complete`)
+#' * `a_fb.MLE` the MLE of the underground feedback activation (in m^-3) - optional result
 #' * `b.MLE` the MLE of the slope of the Gutenberg-Richter law - optional result
 #' * `tau.MLE` the MLE of the mean relaxation time (in days) - optional result (if `type = complete`)
 #' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
@@ -784,14 +787,17 @@ model_par.bayesian <- function(posterior, LL = NULL, type = 'complete'){
   #MAP
   a.MAP <- posterior$ai[posterior$a.post == max(posterior$a.post)]
   b.MAP <- posterior$bi[posterior$b.post == max(posterior$b.post)]
-  if(type == 'complete') tau.MAP <- posterior$taui[posterior$tau.post == max(posterior$tau.post)]
-  else tau.MAP <- NA
+  if(type == 'complete') tau.MAP <- posterior$taui[posterior$tau.post == max(posterior$tau.post)] else tau.MAP <- NA
 
   #mean
   a.mean <- sum(posterior$ai * posterior$a.post) * abin
   b.mean <- sum(posterior$bi * posterior$b.post) * bbin
-  if(type == 'complete') tau.mean <- sum(posterior$taui * posterior$tau.post) * taubin
-  else tau.mean <- NA
+  if(type == 'complete') tau.mean <- sum(posterior$taui * posterior$tau.post) * taubin else tau.mean <- NA
+
+  #credible interval
+  a.CI <- rseismTLS::rejection_sampling(posterior$ai, posterior$a.post)
+  b.CI <- rseismTLS::rejection_sampling(posterior$bi, posterior$b.post)
+  if(type == 'complete') tau.CI <- rseismTLS::rejection_sampling(posterior$taui, posterior$tau.post)
 
   if(!is.null(LL)){
     #MLE
@@ -805,9 +811,10 @@ model_par.bayesian <- function(posterior, LL = NULL, type = 'complete'){
     tau.MLE <- NA
   }
 
-  par <- data.frame(a_fb.MAP = a.MAP, b.MAP = b.MAP, tau.MAP = tau.MAP,
-                    a_fb.mean = a.mean, b.mean = b.mean, tau.mean = tau.mean,
-                    a_fb.MLE = a.MLE, b.MLE = b.MLE, tau.MLE = tau.MLE)
+  par <- list(a_fb.MAP = a.MAP, b.MAP = b.MAP, tau.MAP = tau.MAP,
+              a_fb.mean = a.mean, b.mean = b.mean, tau.mean = tau.mean,
+              a_fb.CI = a.CI, b.CI = b.CI, tau.CI = tau.CI,
+              a_fb.MLE = a.MLE, b.MLE = b.MLE, tau.MLE = tau.MLE)
 
   return(par)
 }
@@ -818,8 +825,10 @@ model_par.bayesian <- function(posterior, LL = NULL, type = 'complete'){
 #' observed and the future expected injection profile.
 #'
 #' Approach based on the hierarchical Bayesian framework of Broccardo et al. (2017) with the induced seismicity
-#' model of MIgnan et al. (2017). All the `data` is used and split into `forecast.twin` bins. From there, all data
-#' before a given bin is used as input for model calibration.
+#' model of Mignan et al. (2017). All the `data` is used and split into `forecast.twin` bins. From there, all data
+#' before a given bin is used as input for model calibration. The calibrated parameters are `a_fb`, `b` and `tau`.
+#' Five statistical measures are given per parameter, in order, the MLE, MAP, posterior mean, lower and upper bounds
+#' of the posterior 90% credible interval.
 #'
 #' @param data a list containing all the necessary point data:
 #' * `seism` an earthquake catalogue data frame of parameters `t` (time in days) and `m` (magnitude)
@@ -840,12 +849,11 @@ model_par.bayesian <- function(posterior, LL = NULL, type = 'complete'){
 #' * `a_tau.prior` the array of the (`a_fb`, `tau`) joint distribution
 #' * `joint.prior_norm` the 3-dimensional array of the normalized joint prior distribution
 #' @param forecast.twin the temporal window (in days) of the forecast
-#' @param metric the way the model parameters are estimated (`MLE`, `MAP` or posterior `mean`)
-#' @return a data frame of parameter estimates per time bin
-#' * `ti` center of the time bin
-#' * `a_fb` the estimated parameter `a_fb` (in m^-3)
-#' * `b` the estimated parameter `b`
-#' * `tau` the estimaed parameter `tau` (in days)
+#' @return a list of parameter estimates per time bin
+#' * `ti` the vector of time bin centers
+#' * `a_fb` the array of 5 statistical measures for `a_fb` (in m^-3) for each time bin
+#' * `b` the array of 5 statistical measures for `b` for each time bin
+#' * `tau` the array of 5 statistical measures for `tau` (in days) for each time bin
 #' @references Broccardo M., Mignan A., Wiemer S., Stojadinovic B., Giardini D. (2017), Hierarchical Bayesian
 #' Modeling of Fluid‐Induced Seismicity. Geophysical Research Letters, 44 (22), 11,357-11,367,
 #' \href{https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2017GL075251}{doi: 10.1002/2017GL075251}
@@ -854,28 +862,28 @@ model_par.bayesian <- function(posterior, LL = NULL, type = 'complete'){
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{loglik_point.array}, \code{model_posterior.distr}, \code{model_par.bayesian}
 forecast.seism <- function(data, prior, forecast.twin, metric) {
-  require(signal)   #interp1()
-
   forecast.bins <- seq(forecast.twin, data$Tmax - forecast.twin, forecast.twin)
   forecast.tmid <- forecast.bins + forecast.twin / 2
   forecast.n <- length(forecast.tmid)
   forecast.dV <- interp1(c(0, data$inj$t), c(0, data$inj$dV), forecast.tmid[forecast.tmid < data$ts], method = 'linear')
 
   ti <-  seq(0, data$ts, 1/24/60)
+  require(signal)   #interp1()
   dVi <- interp1(c(0, data$inj$t), c(0, data$inj$dV), ti, method = "linear")
   Vi <- interp1(c(0, data$inj$t), c(0, data$inj$V), ti, method = "linear")
   inj_highres <- rbind(data.frame(t = ti, dV = dVi, V = Vi), tail(data$inj, 1)) #to keep the exact shut-in
 
+  #prior estimates when no data is available
   a.prior <- prior$ai[which(prior$a.prior == max(prior$a.prior))]
   b.prior <- prior$bi[which(prior$b.prior == max(prior$b.prior))]
   tau.prior <- prior$taui[which(prior$tau.prior == max(prior$tau.prior))]
 
   ## parameter estimation ##
-  a_fb <- rep(a.prior, forecast.n)
-  b <- rep(b.prior, forecast.n)
-  tau <- rep(tau.prior, forecast.n)
+  a_fb <- array(a.prior, dim = c(forecast.n, 5))
+  b <- array(b.prior, dim = c(forecast.n, 5))
+  tau <- array(tau.prior, dim = c(forecast.n, 5))
   for(i in 1:forecast.n) {
-    print(paste(i, '/', forecast.n))
+#    print(paste(i, '/', forecast.n))
     seism.past <- subset(data$seism, t <= forecast.bins[i])
     inj.past <- subset(inj_highres, t <= forecast.bins[i])
     if(nrow(inj.past) != 0) {
@@ -894,26 +902,14 @@ forecast.seism <- function(data, prior, forecast.twin, metric) {
         res <- rseismTLS::model_par.bayesian(posterior, LL)
       }
 
-      if(metric == "MLE") {
-        a_fb[i] <- res$a_fb.MLE
-        b[i] <- res$b.MLE
-        if(forecast.tmid[i] >= data$ts) tau[i] <- res$tau.MLE
-      }
-      if(metric == "MAP") {
-        a_fb[i] <- res$a_fb.MAP
-        b[i] <- res$b.MAP
-        if(forecast.tmid[i] >= data$ts) tau[i] <- res$tau.MAP
-      }
-      if(metric == "mean") {
-        a_fb[i] <- res$a_fb.mean
-        b[i] <- res$b.mean
-        if(forecast.tmid[i] >= data$ts) tau[i] <- res$tau.mean
-      }
+      a_fb[i, ] <- c(res$a_fb.MLE, res$a_fb.MAP, res$a_fb.mean, res$a_fb.CI[1], res$a_fb.CI[2])
+      b[i, ] <- c(res$b.MLE, res$b.MAP, res$b.mean, res$b.CI[1], res$b.CI[2])
+      if(forecast.tmid[i] >= data$ts) tau[i, ] <- c(res$tau.MLE, res$tau.MAP, res$tau.mean, res$tau.CI[1], res$tau.CI[2])
     }
   }
 
   ## forecast ##
   # TO BE DONE
 
-  return(data.frame(ti = forecast.tmid, a_fb = a_fb, b = b, tau = tau))
+  return(list(ti = forecast.tmid, a_fb = a_fb, b = b, tau = tau))
 }
