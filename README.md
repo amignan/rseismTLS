@@ -1,7 +1,7 @@
 ---
 title: "rseismTLS"
 author: "Arnaud Mignan"
-date: "2020-06-25"
+date: "2020-06-26"
 output:
   html_document:
     toc: true
@@ -389,26 +389,86 @@ plot(posterior$taui, posterior$tau.post, type = 'l')
 
 <img src="man/figures/README-unnamed-chunk-14-1.png" width="100%" />
 
-Similarly, we can plot the joint posterior distributions:
+Finally, the model parameters are estimated with `model_par.bayesian()`. Five estimates are given, the posterior mean, posterior mode (i.e. Maximum A Posteriori (MAP) estimate), lower and upper bounds of the posterior 90% credible interval, and the MLE (the later only if the log likelihood distribution `LL` is specified). 
+
+
+```r
+( res <- rseismTLS::model_par.bayesian(posterior, LL) )
+#> $a_fb.MAP
+#> [1] 0.07
+#> 
+#> $b.MAP
+#> [1] 1.57
+#> 
+#> $tau.MAP
+#> [1] 1.15
+#> 
+#> $a_fb.mean
+#> [1] 0.06739245
+#> 
+#> $b.mean
+#> [1] 1.571804
+#> 
+#> $tau.mean
+#> [1] 1.160416
+#> 
+#> $a_fb.CI
+#>          5%         95% 
+#> -0.02466689  0.15514744 
+#> 
+#> $b.CI
+#>       5%      95% 
+#> 1.476956 1.666321 
+#> 
+#> $tau.CI
+#>       5%      95% 
+#> 1.031118 1.306545 
+#> 
+#> $a_fb.MLE
+#> [1] 0.1
+#> 
+#> $b.MLE
+#> [1] 1.61
+#> 
+#> $tau.MLE
+#> [1] 1.15
+```
+
+We here plot the MAP estimates on the joint posterior distributions for comparison:
 
 
 ```r
 par(mfrow = c(1,3))
 image(posterior$bi, posterior$ai, posterior$b_a.post, xlim = c(1.4, 1.8), ylim = c(-.1, .3))
+abline(v = res$b.MAP, h = res$a_fb.MAP)
 image(posterior$bi, posterior$taui, posterior$b_tau.post, xlim = c(1.4, 1.8), ylim = c(.8, 1.4))
+abline(v = res$b.MAP, h = res$tau.MAP)
 image(posterior$ai, posterior$taui, posterior$a_tau.post, xlim = c(-.1, .3), ylim = c(.8, 1.4))
+abline(v = res$a_fb.MAP, h = res$tau.MAP)
 ```
 
-<img src="man/figures/README-unnamed-chunk-15-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-16-1.png" width="100%" />
 
-Finally, the model parameters are estimated with `model_par.bayesian()`. Three estimates are given, the posterior mean, posterior mode (i.e. Maximum A Posteriori (MAP) estimate), and the MLE (the later only if the log likelihood distribution `LL` is specified).
+#### Seismicity forecasting
+
+Now that the functions to estimate the model parameters have been presented, we are ready to forecast future seismicity. The function `forecast.seism()` takes all the data and slices it for pseudo-prospective forecasting.
 
 
 ```r
-( par.Bayes <- rseismTLS::model_par.bayesian(posterior, LL) )
-#>   a_fb.MAP b.MAP tau.MAP  a_fb.mean   b.mean tau.mean a_fb.MLE b.MLE tau.MLE
-#> 1     0.07  1.57    1.15 0.06739245 1.571804 1.160416      0.1  1.61    1.15
+forecast.par <- rseismTLS::forecast.seism(data, prior, 1/6)
+
+plot(forecast.par$ti, forecast.par$a_fb[, 3], type = 'l', ylim = c(-2,2), col = 'red')
+lines(forecast.par$ti, forecast.par$a_fb[, 4], lty = 'dotted', col = 'red')
+lines(forecast.par$ti, forecast.par$a_fb[, 5], lty = 'dotted', col = 'red')
+lines(forecast.par$ti, forecast.par$b[, 3], col = 'blue')
+lines(forecast.par$ti, forecast.par$b[, 4], lty = 'dotted', col = 'blue')
+lines(forecast.par$ti, forecast.par$b[, 5], lty = 'dotted', col = 'blue')
+lines(forecast.par$ti, forecast.par$tau[, 3], col = 'darkgreen')
+lines(forecast.par$ti, forecast.par$tau[, 4], lty = 'dotted', col = 'darkgreen')
+lines(forecast.par$ti, forecast.par$tau[, 5], lty = 'dotted', col = 'darkgreen')
 ```
+
+<img src="man/figures/README-unnamed-chunk-17-1.png" width="100%" />
 
 ## Risk functions
 
