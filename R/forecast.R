@@ -882,14 +882,14 @@ forecast.seism <- function(data, prior, forecast.twin, metric) {
 
       # incomplete model (no trailing effect)
       if(forecast.tmid[i] < data$ts) {
-        LL <- rseismTLS::loglik_point.array(list(seism = seism.past, inj = inj.past, m0 = mc), prior, type = 'partial')
+        LL <- rseismTLS::loglik_point.array(list(seism = seism.past, inj = inj.past, m0 = data$m0), prior, type = 'partial')
         posterior <- rseismTLS::model_posterior.distr(prior, LL, type = 'partial')
         res <- rseismTLS::model_par.bayesian(posterior, LL, type = 'partial')
       }
 
       # complete model
       else {
-        LL <- rseismTLS::loglik_point.array(list(seism = seism.past, inj = inj.past, m0 = mc, ts = ts, Tmax = data$Tmax), prior)
+        LL <- rseismTLS::loglik_point.array(list(seism = seism.past, inj = inj.past, m0 = data$m0, ts = data$ts, Tmax = data$Tmax), prior)
         posterior <- rseismTLS::model_posterior.distr(prior, LL, bimarginal = F)
         res <- rseismTLS::model_par.bayesian(posterior, LL)
       }
