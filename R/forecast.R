@@ -611,6 +611,7 @@ model_prior.distr <- function(par, ai = seq(-5,1,.01), bi = seq(.5,2.,.01), taui
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{negloglik_point.val}, \code{model_posterior.distr}
 loglik_point.array <- function(data, par.space, type = 'complete') {
+  require(signal)   #interp1()
   if(type == 'complete') {
     n.a <- length(par.space$ai); n.b <- length(par.space$bi); n.tau <- length(par.space$taui)
     LL <- array(NA, c(n.a, n.tau, n.b))
@@ -853,6 +854,8 @@ model_par.bayesian <- function(posterior, LL = NULL, type = 'complete'){
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{loglik_point.array}, \code{model_posterior.distr}, \code{model_par.bayesian}
 forecast.seism <- function(data, prior, forecast.twin, metric) {
+  require(signal)   #interp1()
+
   forecast.bins <- seq(forecast.twin, data$Tmax - forecast.twin, forecast.twin)
   forecast.tmid <- forecast.bins + forecast.twin / 2
   forecast.n <- length(forecast.tmid)
