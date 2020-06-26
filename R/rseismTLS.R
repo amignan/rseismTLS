@@ -13,6 +13,8 @@
 #' model_prior.distr, loglik_point.array, model_posterior.distr, model_par.bayesian,
 #' forecast.seism
 #' @section rseismNet risk functions: N/A
+#' @section utils
+#' rejection_sampling
 #'
 #' @docType package
 #' @name rseismTLS
