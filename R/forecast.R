@@ -866,7 +866,6 @@ forecast.seism <- function(data, prior, forecast.twin, metric) {
   Vi <- interp1(c(0, data$inj$t), c(0, data$inj$V), ti, method = "linear")
   inj_highres <- rbind(data.frame(t = ti, dV = dVi, V = Vi), tail(data$inj, 1)) #to keep the exact shut-in
 
-  indmax <- which(LL == max(LL), arr.ind = T)
   a.prior <- prior$ai[which(prior$a.prior == max(prior$a.prior))]
   b.prior <- prior$bi[which(prior$b.prior == max(prior$b.prior))]
   tau.prior <- prior$taui[which(prior$tau.prior == max(prior$tau.prior))]
