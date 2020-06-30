@@ -857,7 +857,7 @@ model_par.bayesian <- function(posterior, LL = NULL, type = 'complete'){
 #' traffic light system for actuarial decision-making during deep fluid injections. Sci. Rep., 7, 13607,
 #' \href{https://www.nature.com/articles/s41598-017-13585-9}{doi: 10.1038/s41598-017-13585-9}
 #' @seealso \code{loglik_point.array}, \code{model_posterior.distr}, \code{model_par.bayesian}
-forecast.run <- function(data, prior, forecast.twin, method = 'bayesMAP', Ni = seq(0, 100)) {
+forecast.seism <- function(data, prior, forecast.twin, method = 'bayesMAP', Ni = seq(0, 100)) {
   forecast.bins <- seq(forecast.twin, data$Tmax - forecast.twin, forecast.twin)
   forecast.tmid <- forecast.bins + forecast.twin / 2
   forecast.n <- length(forecast.tmid)
