@@ -887,7 +887,7 @@ forecast.seism <- function(data, prior, forecast.twin, method = 'bayesMAP', Ni =
   N.CI <- array(NA, dim = c(forecast.n, 2))
 
   for(i in 1:forecast.n) {
-    print(paste(i, '/', forecast.n))
+#    print(paste(i, '/', forecast.n))
     seism.hist <- subset(data$seism, t <= forecast.bins[i])
     inj.hist <- subset(inj_highres, t <= forecast.bins[i])
     data.hist <- list(seism = seism.hist, inj = inj.hist, m0 = data$m0, ts = data$ts, Tmax = forecast.bins[i])
