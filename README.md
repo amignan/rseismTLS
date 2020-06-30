@@ -1,7 +1,7 @@
 ---
 title: "rseismTLS"
 author: "Arnaud Mignan"
-date: "2020-06-26"
+date: "2020-06-30"
 output:
   html_document:
     toc: true
@@ -414,15 +414,15 @@ Finally, the model parameters are estimated with `model_par.bayesian()`. Five es
 #> 
 #> $a_fb.CI
 #>          5%         95% 
-#> -0.02466689  0.15514744 
+#> -0.02311527  0.16074375 
 #> 
 #> $b.CI
 #>       5%      95% 
-#> 1.476956 1.666321 
+#> 1.475901 1.669262 
 #> 
 #> $tau.CI
 #>       5%      95% 
-#> 1.031118 1.306545 
+#> 1.025076 1.308376 
 #> 
 #> $a_fb.MLE
 #> [1] 0.1
@@ -449,26 +449,78 @@ abline(v = res$a_fb.MAP, h = res$tau.MAP)
 
 <img src="man/figures/README-unnamed-chunk-16-1.png" width="100%" />
 
-#### Seismicity forecasting
+#### Seismicity rate forecasting
 
-Now that the functions to estimate the model parameters have been presented, we are ready to forecast future seismicity. The function `forecast.seism()` takes all the data and slices it for pseudo-prospective forecasting.
+Now that the functions to estimate the model parameters have been presented, we are ready to forecast future seismicity. The function `forecast.seism()` takes all the data and slices it in regular time windows of length `forecast.twin` (fixed below to $\Delta t = 1/6$ of a day) for pseudo-prospective forecasting. Note that we here use the default fast MAP method (i.e. ). The full posterior distribution can be used instead by selecting `method = 'bayesFull'`, which provides a better evaluation of the forecast distribution tail. Note however that this method becomes very slow in the case of a high-resolution parameter space (consider changing then the input parameter ranges `ai`, `bi` and `taui` in the function `model_prior.distr()`). Let us first plot the MAP parameters estimated from the observations up to time $t$.
 
 
 ```r
-forecast.par <- rseismTLS::forecast.seism(data, prior, 1/6)
+forecast.twin <- 1/6
+forecast <- rseismTLS::forecast.seism(data, prior, forecast.twin)
 
-plot(forecast.par$ti, forecast.par$a_fb[, 3], type = 'l', ylim = c(-2,2), col = 'red')
-lines(forecast.par$ti, forecast.par$a_fb[, 4], lty = 'dotted', col = 'red')
-lines(forecast.par$ti, forecast.par$a_fb[, 5], lty = 'dotted', col = 'red')
-lines(forecast.par$ti, forecast.par$b[, 3], col = 'blue')
-lines(forecast.par$ti, forecast.par$b[, 4], lty = 'dotted', col = 'blue')
-lines(forecast.par$ti, forecast.par$b[, 5], lty = 'dotted', col = 'blue')
-lines(forecast.par$ti, forecast.par$tau[, 3], col = 'darkgreen')
-lines(forecast.par$ti, forecast.par$tau[, 4], lty = 'dotted', col = 'darkgreen')
-lines(forecast.par$ti, forecast.par$tau[, 5], lty = 'dotted', col = 'darkgreen')
+plot(forecast$ti, forecast$a_fb, type = 'l', ylim = c(-2,2), col = 'red', ylab = 'MAP estimates')
+lines(forecast$ti, forecast$a_fb.CI[, 1], lty = 'dotted', col = 'red')
+lines(forecast$ti, forecast$a_fb.CI[, 2], lty = 'dotted', col = 'red')
+lines(forecast$ti, forecast$b, col = 'blue')
+lines(forecast$ti, forecast$b.CI[, 1], lty = 'dotted', col = 'blue')
+lines(forecast$ti, forecast$b.CI[, 2], lty = 'dotted', col = 'blue')
+lines(forecast$ti, forecast$tau, col = 'darkgreen')
+lines(forecast$ti, forecast$tau.CI[, 1], lty = 'dotted', col = 'darkgreen')
+lines(forecast$ti, forecast$tau.CI[, 2], lty = 'dotted', col = 'darkgreen')
 ```
 
 <img src="man/figures/README-unnamed-chunk-17-1.png" width="100%" />
+
+Note the high uncertainties when data is scarce. In that case, the parameter values are close to the prior estimates. The three parameters then converve to their site-specific values when more data comes in.
+Now, let us plot the forecasted count of earthquakes in the period $(t, t+\Delta t]$:
+
+
+```r
+forecast.bins <- seq(forecast.twin, data$Tmax, forecast.twin)
+res <- hist(seism$t, breaks = forecast.bins, main = 'Pseudo-prospective forecast (bayesMAP)', col = 'grey', border = 'white', ylim = c(0, 70))
+polygon(x = c(forecast$ti, rev(forecast$ti)), y = c(forecast$N.CI[, 1], rev(forecast$N.CI[, 2])), col = rgb(1, 0, 0,0.5), border = NA)
+boolean90 <- res$counts >= forecast$N.CI[, 1] & res$counts <= forecast$N.CI[, 2]
+points(res$mids[boolean90], rep(-1, length(which(boolean90))), col = 'darkgreen', pch = 15, cex = .5)
+points(res$mids[!boolean90], rep(-1, length(which(!boolean90))), col = 'darkred', pch = 15, cex = .5)
+```
+
+<img src="man/figures/README-unnamed-chunk-18-1.png" width="100%" />
+
+```r
+
+( length(which(boolean90)) / length(res$mids) )
+#> [1] 0.8309859
+```
+
+Can we reduce the number of bins falling outside the 90% credible interval? The fast `bayesMAP` method does not model the parameter tails so we might improve the forecast by modelling the entire posterior distribution. First we will reduce the resolution of the parameter space and then rerun `forecast.seism()`:
+
+
+```r
+prior2 <- rseismTLS::model_prior.distr(par, ai = seq(-5,1,.1), bi = seq(.5,2.,.1), taui = seq(.1,15,.1))
+#> Warning in densfun(x, parm[1], parm[2], ...): NaNs produced
+forecast2 <- rseismTLS::forecast.seism(data, prior2, forecast.twin, method = 'bayesFull')
+
+res <- hist(seism$t, breaks = forecast.bins, main = 'Pseudo-prospective forecast (bayesFull)', col = 'grey', border = 'white', ylim = c(0, 70))
+polygon(x = c(forecast2$ti, rev(forecast2$ti)), y = c(forecast2$N.CI[, 1], rev(forecast2$N.CI[, 2])), col = rgb(1, 0, 0,0.5), border = NA)
+boolean90 <- res$counts >= forecast2$N.CI[, 1] & res$counts <= forecast2$N.CI[, 2]
+points(res$mids[boolean90], rep(-1, length(which(boolean90))), col = 'darkgreen', pch = 15, cex = .5)
+points(res$mids[!boolean90], rep(-1, length(which(!boolean90))), col = 'darkred', pch = 15, cex = .5)
+```
+
+<img src="man/figures/README-unnamed-chunk-19-1.png" width="100%" />
+
+```r
+
+( length(which(boolean90)) / length(res$mids) )
+#> [1] 0.8732394
+```
+
+
+
+#### Maximum magnitude forecasting
+
+TO BE COMPLETED.
+
 
 ## Risk functions
 
