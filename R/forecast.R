@@ -948,7 +948,7 @@ forecast.seism <- function(data, prior, forecast.twin, method = 'bayesMAP', Ni =
         N.distr[i, ] <- sapply(1:length(Ni), function(i) sum(Ntemp[, , , i]))
       }
       N.mode[i] <- Ni[N.distr[i, ] == max(N.distr[i, ])][1]
-      N.CI[i, ] <-  round(rseismTLS::rejection_sampling(Ni, N.distr[i, ]))
+      if(length(which(is.na(N.distr[i, ]))) == 0) N.CI[i, ] <-  round(rseismTLS::rejection_sampling(Ni, N.distr[i, ]))
     }
   }
   return(list(ti = forecast.tmid, a_fb = a_fb, b = b, tau = tau, a_fb.CI = a_fb.CI, b.CI = b.CI, tau.CI = tau.CI,
