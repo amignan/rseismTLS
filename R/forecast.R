@@ -920,7 +920,7 @@ forecast.seism <- function(data, prior, forecast.twin, method = 'bayesMAP', Ni =
         }
 
         N.mode[i] <- Ni[N.distr[i, ] == max(N.distr[i, ])][1]
-        N.CI[i, ] <-  round(rseismTLS::rejection_sampling(Ni, N.distr[i, ]))
+        if(length(which(is.na(N.distr[i, ]))) == 0) N.CI[i, ] <-  round(rseismTLS::rejection_sampling(Ni, N.distr[i, ]))
       }
     } else if(forecast.tmid[i] >= data$ts) {
       LL <- rseismTLS::loglik_point.array(data.hist, prior)
