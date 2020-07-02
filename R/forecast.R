@@ -795,9 +795,12 @@ model_par.bayesian <- function(posterior, LL = NULL, type = 'complete'){
   if(type == 'complete') tau.mean <- sum(posterior$taui * posterior$tau.post) * taubin else tau.mean <- NA
 
   #credible interval
-  a.CI <- rseismTLS::rejection_sampling(posterior$ai, posterior$a.post)
-  b.CI <- rseismTLS::rejection_sampling(posterior$bi, posterior$b.post)
-  if(type == 'complete') tau.CI <- rseismTLS::rejection_sampling(posterior$taui, posterior$tau.post) else tau.CI <- NA
+  if(length(which(is.na(posterior$a.post))) == 0) a.CI <- rseismTLS::rejection_sampling(posterior$ai, posterior$a.post) else
+    a.CI <- c(NA, NA)
+  if(length(which(is.na(posterior$b.post))) == 0) b.CI <- rseismTLS::rejection_sampling(posterior$bi, posterior$b.post) else
+    b.CI <- c(NA, NA)
+  if(type == 'complete' & length(which(is.na(posterior$tau.post))) == 0) tau.CI <- rseismTLS::rejection_sampling(posterior$taui, posterior$tau.post) else
+    tau.CI <- c(NA, NA)
 
   if(!is.null(LL)){
     #MLE
